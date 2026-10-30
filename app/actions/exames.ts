@@ -30,7 +30,11 @@ export type ASOFormData = {
   checklistPsicossocial?: string;
 };
 
-export async function listSolicitacoes(filters?: { empresaId?: string; clinicaId?: string; status?: string }) {
+export async function listSolicitacoes(filters?: {
+  empresaId?: string;
+  clinicaId?: string;
+  status?: string;
+}) {
   const session = await auth();
   if (!session?.user) throw new Error("Não autenticado");
 
@@ -43,7 +47,9 @@ export async function listSolicitacoes(filters?: { empresaId?: string; clinicaId
     orderBy: { dataSolicitacao: "desc" },
     include: {
       empresa: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
-      colaborador: { select: { id: true, nome: true, cpf: true, funcao: { select: { nome: true } } } },
+      colaborador: {
+        select: { id: true, nome: true, cpf: true, funcao: { select: { nome: true } } },
+      },
       clinica: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
       aso: { select: { id: true, conclusao: true, dataEmissao: true } },
     },
@@ -69,7 +75,6 @@ export async function createSolicitacao(data: SolicitacaoFormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Não autenticado");
 
-  // Buscar riscos do PCMSO/PGR da empresa se não informados
   let riscos = data.riscosInformados;
   if (!riscos) {
     const pcmso = await prisma.pCMSO.findFirst({
@@ -84,7 +89,10 @@ export async function createSolicitacao(data: SolicitacaoFormData) {
 
     if (pcmso?.pgr?.inventarioItens.length) {
       riscos = pcmso.pgr.inventarioItens
-        .map((i) => `${i.risco.nome} (${i.risco.tipo})${i.nivelRisco ? ` — ${i.nivelRisco}` : ""}`)
+        .map(
+          (i) =>
+            `${i.risco.nome} (${i.risco.tipo})${i.nivelRisco ? ` — ${i.nivelRisco}` : ""}`
+        )
         .join("; ");
     }
   }
@@ -116,6 +124,7 @@ export async function emitirASO(data: ASOFormData) {
       empresa: true,
       colaborador: { include: { funcao: true } },
       clinica: true,
+      aso: true,
     },
   });
 
@@ -134,8 +143,12 @@ export async function emitirASO(data: ASOFormData) {
       nomeColaborador: sol.colaborador.nome,
       cpfColaborador: sol.colaborador.cpf,
       funcaoColaborador: sol.colaborador.funcao?.nome || null,
-      riscosOcupacionais: data.riscosOcupacionais || sol.riscosInformados || "Não há riscos que necessitem de controle médico específico",
-      examesRealizados: data.examesRealizados || sol.examesSolicitados || "Exame clínico ocupacional",
+      riscosOcupacionais:
+        data.riscosOcupacionais ||
+        sol.riscosInformados ||
+        "Não há riscos que necessitem de controle médico específico",
+      examesRealizados:
+        data.examesRealizados || sol.examesSolicitados || "Exame clínico ocupacional",
       conclusao: data.conclusao,
       restricoes: data.restricoes || null,
       medicoNome: data.medicoNome || null,
