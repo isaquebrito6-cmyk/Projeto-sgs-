@@ -58,11 +58,6 @@ export function PCMSOForm({
         ...form,
         pgrId: form.pgrId || undefined,
       });
-      if (result.error) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
       router.push(`/pcmso/${result.id}`);
       router.refresh();
     } catch {
@@ -88,7 +83,6 @@ export function PCMSOForm({
               <input required value={form.titulo} onChange={(e) => update("titulo", e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Empresa *</label>
               <select required value={form.empresaId} onChange={(e) => update("empresaId", e.target.value)}
@@ -99,7 +93,6 @@ export function PCMSOForm({
                 ))}
               </select>
             </div>
-
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">PGR vinculado (recomendado)</label>
               <select value={form.pgrId} onChange={(e) => update("pgrId", e.target.value)}
@@ -113,13 +106,11 @@ export function PCMSOForm({
                 <p className="text-xs text-sgs-600">Exames padrão serão criados automaticamente com base nos riscos do PGR.</p>
               )}
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Médico responsável (nome)</label>
               <input value={form.responsavelNome} onChange={(e) => update("responsavelNome", e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">CRM do responsável</label>
               <input value={form.responsavelCrm} onChange={(e) => update("responsavelCrm", e.target.value)}
@@ -131,7 +122,9 @@ export function PCMSOForm({
             <Button type="submit" className="bg-sgs-700 hover:bg-sgs-800" disabled={loading}>
               {loading ? "Criando..." : "Criar PCMSO"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+              Cancelar
+            </Button>
           </div>
         </form>
       </CardContent>

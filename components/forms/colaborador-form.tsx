@@ -107,22 +107,22 @@ export function ColaboradorForm({
         funcaoId: form.funcaoId || undefined,
       };
 
-      const result = isEditing
-        ? await updateColaborador(colaborador!.id, payload)
-        : await createColaborador(payload);
-
-      if (result.error) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-
       if (isEditing) {
+        const result = await updateColaborador(colaborador!.id, payload);
+        if (result.error) {
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
         router.push(`/colaboradores/${colaborador!.id}`);
-      } else if (result.id) {
-        router.push(`/colaboradores/${result.id}`);
       } else {
-        router.push("/colaboradores");
+        const result = await createColaborador(payload);
+        if (result.error) {
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
+        router.push(`/colaboradores/${result.id}`);
       }
       router.refresh();
     } catch {
@@ -145,67 +145,38 @@ export function ColaboradorForm({
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Nome completo *</label>
-              <input
-                required
-                value={form.nome}
-                onChange={(e) => update("nome", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input required value={form.nome} onChange={(e) => update("nome", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">CPF *</label>
-              <input
-                required
-                value={form.cpf}
-                onChange={(e) => update("cpf", e.target.value)}
-                placeholder="000.000.000-00"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input required value={form.cpf} onChange={(e) => update("cpf", e.target.value)} placeholder="000.000.000-00"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de nascimento</label>
-              <input
-                type="date"
-                value={form.dataNascimento}
-                onChange={(e) => update("dataNascimento", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input type="date" value={form.dataNascimento} onChange={(e) => update("dataNascimento", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Sexo</label>
-              <select
-                value={form.sexo}
-                onChange={(e) => update("sexo", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
+              <select value={form.sexo} onChange={(e) => update("sexo", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Selecione</option>
                 <option value="M">Masculino</option>
                 <option value="F">Feminino</option>
                 <option value="Outro">Outro</option>
               </select>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">E-mail</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Telefone</label>
-              <input
-                value={form.telefone}
-                onChange={(e) => update("telefone", e.target.value)}
-                placeholder="(00) 00000-0000"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.telefone} onChange={(e) => update("telefone", e.target.value)} placeholder="(00) 00000-0000"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
 
             <div className="sm:col-span-2 border-t pt-4 mt-2">
@@ -214,12 +185,8 @@ export function ColaboradorForm({
 
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Empresa *</label>
-              <select
-                required
-                value={form.empresaId}
-                onChange={(e) => update("empresaId", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
+              <select required value={form.empresaId} onChange={(e) => update("empresaId", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Selecione a empresa</option>
                 {empresas.map((emp) => (
                   <option key={emp.id} value={emp.id}>
@@ -228,53 +195,36 @@ export function ColaboradorForm({
                 ))}
               </select>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Setor</label>
-              <select
-                value={form.setorId}
-                onChange={(e) => update("setorId", e.target.value)}
+              <select value={form.setorId} onChange={(e) => update("setorId", e.target.value)}
                 disabled={!form.empresaId || setores.length === 0}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-              >
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
                 <option value="">
                   {setores.length === 0 ? "Nenhum setor cadastrado" : "Selecione o setor"}
                 </option>
                 {setores.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nome}
-                  </option>
+                  <option key={s.id} value={s.id}>{s.nome}</option>
                 ))}
               </select>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Função</label>
-              <select
-                value={form.funcaoId}
-                onChange={(e) => update("funcaoId", e.target.value)}
+              <select value={form.funcaoId} onChange={(e) => update("funcaoId", e.target.value)}
                 disabled={!form.setorId || funcoesDoSetor.length === 0}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-              >
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
                 <option value="">
                   {funcoesDoSetor.length === 0 ? "Nenhuma função" : "Selecione a função"}
                 </option>
                 {funcoesDoSetor.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nome}
-                  </option>
+                  <option key={f.id} value={f.id}>{f.nome}</option>
                 ))}
               </select>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de admissão</label>
-              <input
-                type="date"
-                value={form.dataAdmissao}
-                onChange={(e) => update("dataAdmissao", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input type="date" value={form.dataAdmissao} onChange={(e) => update("dataAdmissao", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
           </div>
 

@@ -36,11 +36,6 @@ export function PGRForm({ empresas }: { empresas: EmpresaOption[] }) {
 
     try {
       const result = await createPGR(form);
-      if (result.error) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
       router.push(`/pgr/${result.id}`);
       router.refresh();
     } catch {
@@ -63,22 +58,13 @@ export function PGRForm({ empresas }: { empresas: EmpresaOption[] }) {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Título *</label>
-              <input
-                required
-                value={form.titulo}
-                onChange={(e) => update("titulo", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input required value={form.titulo} onChange={(e) => update("titulo", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Empresa *</label>
-              <select
-                required
-                value={form.empresaId}
-                onChange={(e) => update("empresaId", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
+              <select required value={form.empresaId} onChange={(e) => update("empresaId", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Selecione</option>
                 {empresas.map((e) => (
                   <option key={e.id} value={e.id}>
@@ -87,54 +73,32 @@ export function PGRForm({ empresas }: { empresas: EmpresaOption[] }) {
                 ))}
               </select>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Versão</label>
-              <input
-                value={form.versao}
-                onChange={(e) => update("versao", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.versao} onChange={(e) => update("versao", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Elaborador (nome)</label>
-              <input
-                value={form.elaboradorNome}
-                onChange={(e) => update("elaboradorNome", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.elaboradorNome} onChange={(e) => update("elaboradorNome", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Registro profissional (CREA etc.)</label>
-              <input
-                value={form.elaboradorRegistro}
-                onChange={(e) => update("elaboradorRegistro", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.elaboradorRegistro} onChange={(e) => update("elaboradorRegistro", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
-
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Caracterização dos processos e ambientes</label>
-              <textarea
-                value={form.caracterizacaoProcessos}
-                onChange={(e) => update("caracterizacaoProcessos", e.target.value)}
-                rows={3}
+              <textarea value={form.caracterizacaoProcessos} onChange={(e) => update("caracterizacaoProcessos", e.target.value)} rows={3}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Descreva os processos produtivos, ambientes de trabalho e atividades principais..."
-              />
+                placeholder="Descreva os processos produtivos, ambientes de trabalho e atividades principais..." />
             </div>
-
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Metodologia de avaliação</label>
-              <textarea
-                value={form.metodologiaAvaliacao}
-                onChange={(e) => update("metodologiaAvaliacao", e.target.value)}
-                rows={2}
+              <textarea value={form.metodologiaAvaliacao} onChange={(e) => update("metodologiaAvaliacao", e.target.value)} rows={2}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Critérios de probabilidade e severidade, normas de referência..."
-              />
+                placeholder="Critérios de probabilidade e severidade, normas de referência..." />
             </div>
           </div>
 

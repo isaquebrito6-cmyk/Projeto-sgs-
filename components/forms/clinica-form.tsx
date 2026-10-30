@@ -53,22 +53,22 @@ export function ClinicaForm({ clinica }: { clinica?: Clinica }) {
     setLoading(true);
 
     try {
-      const result = isEditing
-        ? await updateClinica(clinica!.id, form)
-        : await createClinica(form);
-
-      if (result.error) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-
       if (isEditing) {
+        const result = await updateClinica(clinica!.id, form);
+        if (result.error) {
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
         router.push(`/clinicas/${clinica!.id}`);
-      } else if (result.id) {
-        router.push(`/clinicas/${result.id}`);
       } else {
-        router.push("/clinicas");
+        const result = await createClinica(form);
+        if (result.error) {
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
+        router.push(`/clinicas/${result.id}`);
       }
       router.refresh();
     } catch {
@@ -91,63 +91,39 @@ export function ClinicaForm({ clinica }: { clinica?: Clinica }) {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Razão Social *</label>
-              <input
-                required
-                value={form.razaoSocial}
-                onChange={(e) => update("razaoSocial", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input required value={form.razaoSocial} onChange={(e) => update("razaoSocial", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Nome Fantasia</label>
-              <input
-                value={form.nomeFantasia}
-                onChange={(e) => update("nomeFantasia", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.nomeFantasia} onChange={(e) => update("nomeFantasia", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">CNPJ *</label>
-              <input
-                required
-                value={form.cnpj}
-                onChange={(e) => update("cnpj", e.target.value)}
-                placeholder="00.000.000/0000-00"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input required value={form.cnpj} onChange={(e) => update("cnpj", e.target.value)} placeholder="00.000.000/0000-00"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Telefone</label>
-              <input
-                value={form.telefone}
-                onChange={(e) => update("telefone", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.telefone} onChange={(e) => update("telefone", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Endereço</label>
-              <input
-                value={form.endereco}
-                onChange={(e) => update("endereco", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.endereco} onChange={(e) => update("endereco", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Cidade</label>
-              <input
-                value={form.cidade}
-                onChange={(e) => update("cidade", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input value={form.cidade} onChange={(e) => update("cidade", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">UF</label>
-                <select
-                  value={form.uf ?? ""}
-                  onChange={(e) => update("uf", e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
+                <select value={form.uf ?? ""} onChange={(e) => update("uf", e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <option value="">—</option>
                   {UFS.map((uf) => (
                     <option key={uf} value={uf}>{uf}</option>
@@ -156,21 +132,14 @@ export function ClinicaForm({ clinica }: { clinica?: Clinica }) {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">CEP</label>
-                <input
-                  value={form.cep}
-                  onChange={(e) => update("cep", e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
+                <input value={form.cep} onChange={(e) => update("cep", e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">E-mail</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
           </div>
 
