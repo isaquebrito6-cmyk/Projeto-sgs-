@@ -12,14 +12,12 @@ async function main() {
       name: "Isaque Brito",
       passwordHash,
       role: "ADMIN",
-      ativo: true,
     },
     create: {
       email: "isaquebrito6@gmail.com",
       name: "Isaque Brito",
       passwordHash,
       role: "ADMIN",
-      ativo: true,
     },
   });
 
@@ -28,14 +26,12 @@ async function main() {
     update: {
       passwordHash,
       role: "ADMIN",
-      ativo: true,
     },
     create: {
       email: "admin@sgs.local",
       name: "Administrador SGS",
       passwordHash,
       role: "ADMIN",
-      ativo: true,
     },
   });
 
