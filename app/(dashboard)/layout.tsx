@@ -41,6 +41,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Mobile header */}
       <header className="lg:hidden sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-white px-4">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -56,6 +57,7 @@ export default function DashboardLayout({
         </div>
       </header>
 
+      {/* Sidebar overlay (mobile) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -63,6 +65,7 @@ export default function DashboardLayout({
         />
       )}
 
+      {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
@@ -119,6 +122,7 @@ export default function DashboardLayout({
         </div>
       </aside>
 
+      {/* Main content */}
       <main className="lg:pl-64">
         <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8">{children}</div>
       </main>
