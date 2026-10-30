@@ -1,141 +1,82 @@
 # SGS — Sistema de Gestão em Segurança do Trabalho
 
-Sistema profissional de gestão de SST focado em **Medicina Ocupacional**, documentação e conformidade com as Normas Regulamentadoras do Ministério do Trabalho e Emprego (MTE).
+Sistema profissional de gestão de SST focado em **Medicina Ocupacional**, documentação e conformidade com as Normas Regulamentadoras do **Ministério do Trabalho e Emprego (MTE)**.
 
-## Funcionalidades principais
+## Conformidade com as NRs
 
-- **PGR (Programa de Gerenciamento de Riscos)** conforme NR-1 e NR-9
-  - Wizard de inventário de riscos ocupacionais
-  - Classificação de riscos (probabilidade × severidade)
-  - Grupos Homogêneos de Exposição (GHE)
-  - Plano de Ação
-  - Geração automática do documento completo em PDF
+| Norma | Aplicação no sistema |
+|-------|----------------------|
+| **NR-1** | PGR: Inventário de Riscos Ocupacionais + Plano de Ação (itens 1.5.3 e 1.5.7) |
+| **NR-7** | PCMSO vinculado aos riscos do PGR; ASO com todos os campos do item **7.5.19.1** (alíneas a–g); tipos de exame 7.5.8–7.5.11 |
+| **NR-9** | Avaliação e controle de agentes físicos, químicos e biológicos integrados ao inventário do PGR (itens 9.4.3 e 9.5.3) |
 
-- **PCMSO (Programa de Controle Médico de Saúde Ocupacional)** conforme NR-7
-  - Vinculado automaticamente aos riscos do PGR
-  - Definição de exames por setor, função e risco
-  - Geração do documento PCMSO
+### ASO — conteúdo mínimo (NR-7, 7.5.19.1)
 
-- **Fluxo completo de Medicina Ocupacional**
-  - Cadastro de empresas, clínicas, médicos e colaboradores
-  - Solicitação de exames com formulário ASO + checklist psicossocial pré-preenchidos
-  - Clínica edita, assina e faz upload do ASO
-  - Empresa visualiza, imprime e baixa os ASOs
+- **a)** Razão social e CNPJ/CAEPF da organização  
+- **b)** Nome completo, CPF e função do empregado  
+- **c)** Perigos/fatores de risco do PGR que necessitam controle médico no PCMSO (ou inexistência)  
+- **d)** Indicação e data dos exames clínicos e complementares  
+- **e)** Conclusão: APTO ou INAPTO para a função  
+- **f)** Nome e registro do médico responsável pelo PCMSO  
+- **g)** Data, registro e assinatura do médico examinador  
 
-- Interface **100% responsiva** (mobile + desktop)
-- Controle de acesso por perfil (Empresa · Clínica · Médico · Administrador)
-- Dashboard com alertas de vencimentos e pendências
+Aptidões específicas (NR-10, NR-33, NR-35 etc.) podem ser registradas conforme item 7.5.19.2.
 
-## Stack tecnológica
+> **Aviso:** Os documentos gerados devem ser revisados e assinados por profissional legalmente habilitado (Engenheiro/Técnico de Segurança do Trabalho e Médico do Trabalho). O sistema é ferramenta de apoio à gestão e documentação.
 
-| Camada              | Tecnologia                          |
-|---------------------|-------------------------------------|
-| Frontend            | Next.js 15 (App Router) + TypeScript + Tailwind CSS + shadcn/ui |
-| Backend             | Next.js Server Actions + API Routes |
-| Banco de dados      | Prisma ORM + SQLite (dev) / PostgreSQL (prod) |
-| Autenticação        | Auth.js (NextAuth v5) com roles     |
-| Geração de PDF      | @react-pdf/renderer                 |
-| Storage de arquivos | Local (dev) / Supabase Storage (prod) |
-| Deploy recomendado  | Vercel + Supabase                   |
+## Funcionalidades
 
-## Estrutura do projeto
+- **PGR** — Wizard de inventário (tipo de risco, probabilidade × severidade, nível, GHE/setor/função, medidas existentes) + Plano de Ação
+- **PCMSO** — Vinculado ao PGR; exames padrão gerados automaticamente conforme riscos (audiometria, espirometria etc.)
+- **Exames / ASO** — Solicitação (admissional, periódico, retorno, mudança de risco, demissional) → clínica emite ASO → impressão/PDF conforme NR-7
+- Cadastros: Empresas, Setores, Funções, Colaboradores, Clínicas, Médicos
+- Interface 100% responsiva
+- Autenticação com roles (Admin, Empresa, Clínica, Médico)
 
-```
-Projeto-sgs-/
-├── app/                    # App Router (páginas e layouts)
-│   ├── (auth)/             # Login, registro
-│   ├── (dashboard)/        # Área logada
-│   │   ├── empresas/
-│   │   ├── clinicas/
-│   │   ├── colaboradores/
-│   │   ├── pgr/
-│   │   ├── pcmso/
-│   │   ├── exames/
-│   │   └── aso/
-│   └── api/                # API routes
-├── components/             # Componentes reutilizáveis
-│   ├── ui/                 # shadcn/ui
-│   ├── forms/
-│   ├── documents/          # Templates de PDF (PGR, PCMSO, ASO)
-│   └── layout/
-├── lib/                    # Utilitários, auth, prisma client
-├── prisma/                 # Schema e migrations
-├── types/                  # Tipos TypeScript
-└── public/
-```
+## Stack
 
-## Como rodar localmente
+Next.js 15 · TypeScript · Tailwind · Prisma · Auth.js · SQLite (dev)
+
+## Como rodar
 
 ```bash
-# 1. Clone o repositório
 git clone https://github.com/isaquebrito6-cmyk/Projeto-sgs-.git
 cd Projeto-sgs-
-
-# 2. Instale as dependências
 npm install
-
-# 3. Configure o banco (SQLite por padrão)
 cp .env.example .env
-
-# 4. Gere o cliente Prisma e rode as migrations
 npx prisma generate
 npx prisma db push
-
-# 5. (Opcional) Popule com dados de exemplo
 npx prisma db seed
-
-# 6. Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-Acesse: [http://localhost:3000](http://localhost:3000)
+Acesse: http://localhost:3000  
 
-## Roadmap de desenvolvimento
+**Login demo:** `admin@sgs.local` / `admin123`
 
-### Fase 1 — Fundação (atual)
-- [x] Scaffold Next.js + TypeScript + Tailwind
-- [x] Schema Prisma completo
-- [ ] Autenticação e controle de roles
-- [ ] Layout responsivo + dashboard base
+## Fluxo recomendado de uso
 
-### Fase 2 — Cadastros
-- [ ] Empresas
-- [ ] Clínicas e médicos
-- [ ] Colaboradores + setores + funções
-- [ ] Riscos ocupacionais e GHEs
+1. Cadastrar **Empresa** (CNPJ, grau de risco NR-4, CNAE)
+2. Criar **Setores** e **Funções** na página da empresa
+3. Cadastrar **Colaboradores** vinculados a setor/função
+4. Elaborar **PGR** → inventário de riscos + plano de ação
+5. Gerar **PCMSO** vinculado ao PGR (exames automáticos conforme riscos)
+6. Cadastrar **Clínica** e **Médicos**
+7. **Solicitar exame** → clínica emite **ASO** → imprimir/salvar PDF
 
-### Fase 3 — PGR
-- [ ] Wizard de inventário de riscos
-- [ ] Classificação e medidas de controle
-- [ ] Plano de Ação
-- [ ] Geração do PDF do PGR (conforme NR-1/NR-9)
+## Estrutura
 
-### Fase 4 — PCMSO
-- [ ] Vinculação automática aos riscos do PGR
-- [ ] Definição de exames e periodicidade
-- [ ] Geração do PDF do PCMSO (conforme NR-7)
-
-### Fase 5 — Fluxo de Exames e ASO
-- [ ] Solicitação de exames pela empresa
-- [ ] Formulário ASO + checklist psicossocial
-- [ ] Edição e assinatura pela clínica
-- [ ] Upload e acesso pela empresa
-- [ ] Alertas de vencimento
-
-### Fase 6 — Produção
-- [ ] Migração para PostgreSQL + Supabase
-- [ ] Deploy na Vercel
-- [ ] Testes e refinamentos de UX
-
-## Conformidade legal
-
-O sistema é projetado para gerar documentos alinhados às seguintes normas:
-
-- **NR-1** — Disposições Gerais e Gerenciamento de Riscos Ocupacionais (PGR)
-- **NR-7** — Programa de Controle Médico de Saúde Ocupacional (PCMSO) e ASO
-- **NR-9** — Avaliação e Controle das Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos
-
-> **Aviso importante**: Os documentos gerados devem sempre ser revisados e assinados por profissional legalmente habilitado (Engenheiro/Técnico de Segurança do Trabalho e Médico do Trabalho). O sistema é uma ferramenta de apoio à gestão e documentação.
+```
+app/
+  (dashboard)/
+    empresas/          # CRUD + setores/funções
+    clinicas/          # CRUD + médicos
+    colaboradores/     # CRUD vinculado a empresa/setor/função
+    pgr/               # Inventário + Plano de Ação (NR-1/NR-9)
+    pcmso/             # Exames por tipo (NR-7)
+    exames/            # Solicitações + emissão e impressão de ASO
+prisma/schema.prisma   # Modelos alinhados às NRs
+```
 
 ## Licença
 
