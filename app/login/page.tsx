@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Shield, Eye, EyeOff } from "lucide-react";
+import { Shield, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,10 +37,10 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push(callbackUrl);
       router.refresh();
     } catch {
-      setError("Erro ao entrar. Tente novamente.");
+      setError("Erro ao fazer login. Tente novamente.");
       setLoading(false);
     }
   }
@@ -64,7 +67,8 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </div>
               )}
@@ -114,7 +118,7 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 rounded-md bg-slate-50 border px-3 py-2 text-xs text-slate-500">
-              <strong>Demo:</strong> admin@sgs.com.br / admin123
+              <strong>Demo:</strong> admin@sgs.local / admin123
             </div>
           </CardContent>
         </Card>
