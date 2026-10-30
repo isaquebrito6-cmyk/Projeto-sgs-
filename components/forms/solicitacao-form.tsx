@@ -54,11 +54,6 @@ export function SolicitacaoForm({
         ...form,
         clinicaId: form.clinicaId || undefined,
       });
-      if (result.error) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
       router.push(`/exames/${result.id}`);
       router.refresh();
     } catch {
@@ -82,7 +77,9 @@ export function SolicitacaoForm({
               <label className="text-sm font-medium">Tipo de exame (NR-7) *</label>
               <select required value={form.tipoExame} onChange={(e) => update("tipoExame", e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                {TIPOS_EXAME.map((t) => <option key={t} value={t}>{t}</option>)}
+                {TIPOS_EXAME.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
             </div>
 
@@ -140,7 +137,9 @@ export function SolicitacaoForm({
             <Button type="submit" className="bg-sgs-700 hover:bg-sgs-800" disabled={loading}>
               {loading ? "Enviando..." : "Criar solicitação"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+              Cancelar
+            </Button>
           </div>
         </form>
       </CardContent>

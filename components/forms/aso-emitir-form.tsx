@@ -62,7 +62,7 @@ export function ASOEmitirForm({
 
     try {
       const result = await emitirASO(form);
-      if (result.error) {
+      if ("error" in result && result.error) {
         setError(result.error);
         setLoading(false);
         return;
