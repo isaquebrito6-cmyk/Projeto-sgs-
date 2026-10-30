@@ -6,19 +6,42 @@ const prisma = new PrismaClient();
 async function main() {
   const passwordHash = await bcrypt.hash("admin123", 12);
 
-  const admin = await prisma.user.upsert({
+  const adminPrincipal = await prisma.user.upsert({
+    where: { email: "isaquebrito6@gmail.com" },
+    update: {
+      name: "Isaque Brito",
+      passwordHash,
+      role: "ADMIN",
+      ativo: true,
+    },
+    create: {
+      email: "isaquebrito6@gmail.com",
+      name: "Isaque Brito",
+      passwordHash,
+      role: "ADMIN",
+      ativo: true,
+    },
+  });
+
+  const adminDemo = await prisma.user.upsert({
     where: { email: "admin@sgs.local" },
-    update: {},
+    update: {
+      passwordHash,
+      role: "ADMIN",
+      ativo: true,
+    },
     create: {
       email: "admin@sgs.local",
       name: "Administrador SGS",
       passwordHash,
       role: "ADMIN",
+      ativo: true,
     },
   });
 
-  console.log("Usuário admin criado:", admin.email);
-  console.log("Senha: admin123");
+  console.log("Admin principal:", adminPrincipal.email);
+  console.log("Admin demo:", adminDemo.email);
+  console.log("Senha padrão: admin123");
 }
 
 main()
