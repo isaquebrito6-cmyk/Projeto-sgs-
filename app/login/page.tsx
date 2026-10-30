@@ -1,25 +1,45 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Shield, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    // TODO: integrar com Auth.js
-    setTimeout(() => {
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("E-mail ou senha inválidos.");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Erro ao entrar. Tente novamente.");
       setLoading(false);
-      window.location.href = "/dashboard";
-    }, 800);
+    }
   }
 
   return (
@@ -43,6 +63,12 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-sgs-800">
                   E-mail
@@ -87,10 +113,9 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Ainda não tem conta?{" "}
-              <span className="text-sgs-700 font-medium">Fale com o administrador</span>
-            </p>
+            <div className="mt-6 rounded-md bg-slate-50 border px-3 py-2 text-xs text-slate-500">
+              <strong>Demo:</strong> admin@sgs.com.br / admin123
+            </div>
           </CardContent>
         </Card>
 
