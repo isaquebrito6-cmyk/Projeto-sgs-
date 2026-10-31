@@ -14,8 +14,8 @@ function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("isaquebrito6@gmail.com");
+  const [password, setPassword] = useState("Admin@SGS2026");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +32,7 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError("E-mail ou senha inválidos. Se acabou de configurar o banco, aguarde o deploy terminar.");
+        setError("E-mail ou senha inválidos.");
         setLoading(false);
         return;
       }
@@ -40,7 +40,7 @@ function LoginForm() {
       router.push(callbackUrl);
       router.refresh();
     } catch {
-      setError("Erro ao fazer login. Verifique a conexão com o banco (DATABASE_URL)." );
+      setError("Erro ao fazer login. Tente novamente.");
       setLoading(false);
     }
   }
@@ -73,7 +73,6 @@ function LoginForm() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -90,7 +89,6 @@ function LoginForm() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
@@ -110,11 +108,12 @@ function LoginForm() {
 
         <div className="mt-6 rounded-md bg-slate-50 border px-3 py-2 text-xs text-slate-500 space-y-1">
           <div>
-            <strong>Admin:</strong> isaquebrito6@gmail.com / admin123
+            <strong>Acesso admin:</strong> isaquebrito6@gmail.com
           </div>
           <div>
-            <strong>Demo:</strong> admin@sgs.local / admin123
+            <strong>Senha inicial:</strong> Admin@SGS2026
           </div>
+          <div className="text-slate-400">Troque a senha depois nas configurações do servidor (variável BOOTSTRAP_PASSWORD).</div>
         </div>
       </CardContent>
     </Card>
