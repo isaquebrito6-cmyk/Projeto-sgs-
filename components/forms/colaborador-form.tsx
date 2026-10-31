@@ -8,6 +8,8 @@ import {
   type ColaboradorFormData,
 } from "@/app/actions/colaboradores";
 import { listSetores } from "@/app/actions/setores";
+import { actionValidarCPF } from "@/app/actions/brasil";
+import { formatCPFMask } from "@/lib/brasil";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
@@ -55,6 +57,7 @@ export function ColaboradorForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [cpfMsg, setCpfMsg] = useState("");
   const [setores, setSetores] = useState<SetorComFuncoes[]>([]);
 
   const [form, setForm] = useState<ColaboradorFormData>({
@@ -95,10 +98,27 @@ export function ColaboradorForm({
     });
   }
 
+  async function handleCpfBlur() {
+    const digits = form.cpf.replace(/\D/g, "");
+    if (digits.length !== 11) {
+      setCpfMsg("");
+      return;
+    }
+    const result = await actionValidarCPF(digits);
+    setCpfMsg(result.message);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    const cpfCheck = await actionValidarCPF(form.cpf);
+    if (!cpfCheck.valid) {
+      setError(cpfCheck.message);
+      setLoading(false);
+      return;
+    }
 
     try {
       const payload = {
@@ -150,8 +170,22 @@ export function ColaboradorForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">CPF *</label>
-              <input required value={form.cpf} onChange={(e) => update("cpf", e.target.value)} placeholder="000.000.000-00"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                required
+                value={form.cpf}
+                onChange={(e) => update("cpf", formatCPFMask(e.target.value))}
+                onBlur={handleCpfBlur}
+                placeholder="000.000.000-00"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              {cpfMsg && (
+                <p className={`text-xs ${cpfMsg.includes("inválido") ? "text-red-600" : "text-emerald-600"}`}>
+                  {cpfMsg}
+                </p>
+              )}
+              <p className="text-xs text-slate-400">
+                Dados pessoais por CPF exigem API paga e base legal (LGPD). Aqui validamos o número.
+              </p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de nascimento</label>
@@ -227,13 +261,6 @@ export function ColaboradorForm({
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
           </div>
-
-          {form.empresaId && setores.length === 0 && (
-            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
-              Esta empresa ainda não possui setores cadastrados. Você pode cadastrar o colaborador
-              agora e vincular setor/função depois, ou criar setores na página da empresa.
-            </div>
-          )}
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" className="bg-sgs-700 hover:bg-sgs-800" disabled={loading}>
