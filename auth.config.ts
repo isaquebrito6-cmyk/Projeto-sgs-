@@ -21,9 +21,14 @@ export const authConfig = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as { role?: string }).role;
-        token.empresaId = (user as { empresaId?: string | null }).empresaId;
-        token.clinicaId = (user as { clinicaId?: string | null }).clinicaId;
+        const u = user as {
+          role?: "ADMIN" | "EMPRESA" | "CLINICA" | "MEDICO";
+          empresaId?: string | null;
+          clinicaId?: string | null;
+        };
+        token.role = u.role;
+        token.empresaId = u.empresaId;
+        token.clinicaId = u.clinicaId;
       }
       return token;
     },
