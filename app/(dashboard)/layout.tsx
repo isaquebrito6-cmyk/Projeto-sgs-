@@ -11,7 +11,6 @@ import {
   Stethoscope,
   FileText,
   ClipboardList,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -28,7 +27,6 @@ const navItems = [
   { href: "/pgr", label: "PGR", icon: FileText },
   { href: "/pcmso", label: "PCMSO", icon: Stethoscope },
   { href: "/exames", label: "Exames / ASO", icon: ClipboardList },
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 export default function DashboardLayout({
@@ -41,11 +39,11 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Mobile header */}
       <header className="lg:hidden sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-white px-4">
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-2 -ml-2 rounded-md hover:bg-slate-100"
+          aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -57,7 +55,6 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      {/* Sidebar overlay (mobile) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -65,7 +62,6 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
@@ -82,6 +78,7 @@ export default function DashboardLayout({
           <button
             onClick={() => setSidebarOpen(false)}
             className="p-1.5 rounded-md hover:bg-slate-100 lg:hidden"
+            aria-label="Fechar menu"
           >
             <X className="w-5 h-5" />
           </button>
@@ -111,7 +108,9 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t space-y-2">
+          <p className="px-3 text-[10px] uppercase tracking-wide text-slate-400">Em breve</p>
+          <p className="px-3 text-xs text-slate-400">Treinamentos · Carteirinha · EPI · OS</p>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
@@ -122,7 +121,6 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="lg:pl-64">
         <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8">{children}</div>
       </main>

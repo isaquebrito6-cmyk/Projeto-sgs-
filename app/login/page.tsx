@@ -26,13 +26,13 @@ function LoginForm() {
 
     try {
       const result = await signIn("credentials", {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError("E-mail ou senha inválidos.");
+        setError("E-mail ou senha inválidos. Se acabou de configurar o banco, aguarde o deploy terminar.");
         setLoading(false);
         return;
       }
@@ -40,7 +40,7 @@ function LoginForm() {
       router.push(callbackUrl);
       router.refresh();
     } catch {
-      setError("Erro ao fazer login. Tente novamente.");
+      setError("Erro ao fazer login. Verifique a conexão com o banco (DATABASE_URL)." );
       setLoading(false);
     }
   }
@@ -56,9 +56,9 @@ function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
+            <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -70,10 +70,11 @@ function LoginForm() {
               id="email"
               type="email"
               required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
@@ -86,15 +87,16 @@ function LoginForm() {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -106,8 +108,13 @@ function LoginForm() {
           </Button>
         </form>
 
-        <div className="mt-6 rounded-md bg-slate-50 border px-3 py-2 text-xs text-slate-500">
-          <strong>Demo:</strong> admin@sgs.local / admin123
+        <div className="mt-6 rounded-md bg-slate-50 border px-3 py-2 text-xs text-slate-500 space-y-1">
+          <div>
+            <strong>Admin:</strong> isaquebrito6@gmail.com / admin123
+          </div>
+          <div>
+            <strong>Demo:</strong> admin@sgs.local / admin123
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -140,7 +147,7 @@ export default function LoginPage() {
         </Suspense>
 
         <p className="mt-6 text-center text-xs text-sgs-500">
-          Sistema de Gestão em Segurança do Trabalho · Conformidade NR-1, NR-7 e NR-9
+          Sistema de Gestão em Segurança do Trabalho · NR-1, NR-7 e NR-9
         </p>
       </div>
     </div>
