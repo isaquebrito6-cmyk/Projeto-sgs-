@@ -25,22 +25,25 @@ export type CpfLookupResult = {
   sexo?: string;
   email?: string;
   telefone?: string;
-  fonte: "interno" | "api" | "validacao";
+  regiaoEmissao?: string;
+  ufs?: string[];
+  fonte: "interno" | "brasilapi" | "api" | "validacao";
   message: string;
 };
 
 /**
- * Busca dados por CPF:
- * 1) Valida o número
- * 2) Procura na base do SGS (colaborador já cadastrado)
- * 3) Se houver CPF_API_URL + CPF_API_TOKEN, consulta API externa
+ * Busca CPF:
+ * 1) Valida dígitos
+ * 2) Base interna SGS (preenche nome se já cadastrado)
+ * 3) BrasilAPI — validação + região de emissão (não retorna nome)
+ * 4) API externa opcional (CPF_API_URL + CPF_API_TOKEN) para nome
  */
 export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { error: string }> {
   const d = onlyDigits(cpf);
   if (d.length !== 11) return { error: "CPF deve ter 11 dígitos." };
   if (!isValidCPF(d)) return { error: "CPF inválido." };
 
-  // 1) Base interna do sistema
+  // 1) Base interna
   try {
     const interno = await prisma.colaborador.findFirst({
       where: { cpf: d, ativo: true },
@@ -62,10 +65,34 @@ export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { 
       };
     }
   } catch {
-    // banco indisponível — segue para API
+    // banco indisponível
   }
 
-  // 2) API externa (opcional)
+  // 2) BrasilAPI — validação + região (não tem nome/nascimento)
+  let regiaoEmissao: string | undefined;
+  let ufs: string[] | undefined;
+  let brasilOk = false;
+
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/cpf/v1/${d}`, {
+      next: { revalidate: 86400 },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      brasilOk = data.isValid === true;
+      if (data.rf != null) regiaoEmissao = String(data.rf);
+      if (Array.isArray(data.ufs)) ufs = data.ufs.map(String);
+
+      if (data.isValid === false) {
+        return { error: "CPF inválido (BrasilAPI)." };
+      }
+    }
+  } catch {
+    // segue
+  }
+
+  // 3) API externa opcional com nome
   const apiUrl = process.env.CPF_API_URL;
   const apiToken = process.env.CPF_API_TOKEN;
 
@@ -86,12 +113,13 @@ export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { 
       if (res.ok) {
         const data = await res.json();
         const nome =
-          data.nome || data.name || data.nome_completo || data.nomeCompleto || "";
+          data.nome || data.name || data.nome_completo || data.nomeCompleto || data?.data?.NOME || "";
         const nasc =
           data.data_nascimento ||
           data.dataNascimento ||
           data.birthDate ||
           data.nascimento ||
+          data?.data?.NASC ||
           "";
 
         if (nome) {
@@ -99,23 +127,31 @@ export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { 
             cpf: formatCPFMask(d),
             nome: String(nome),
             dataNascimento: nasc ? String(nasc).slice(0, 10) : undefined,
-            sexo: data.sexo || data.genero || undefined,
+            sexo: data.sexo || data.genero || data?.data?.SEXO || undefined,
             email: data.email || undefined,
             telefone: data.telefone || data.phone || undefined,
+            regiaoEmissao,
+            ufs,
             fonte: "api",
             message: "Dados encontrados via API de CPF.",
           };
         }
       }
     } catch {
-      // falha na API
+      // falha na API paga
     }
   }
 
+  const ufsTxt = ufs?.length ? ` · UF(s): ${ufs.join(", ")}` : "";
+  const rfTxt = regiaoEmissao != null ? ` · Região RF: ${regiaoEmissao}` : "";
+
   return {
     cpf: formatCPFMask(d),
-    fonte: "validacao",
-    message:
-      "CPF válido. Nome e demais dados não estão disponíveis em API pública gratuita (LGPD). Preencha manualmente ou configure CPF_API_URL + CPF_API_TOKEN.",
+    regiaoEmissao,
+    ufs,
+    fonte: brasilOk ? "brasilapi" : "validacao",
+    message: brasilOk
+      ? `CPF válido (BrasilAPI)${rfTxt}${ufsTxt}. Nome não é fornecido pela BrasilAPI — preencha manualmente.`
+      : "CPF válido. Nome não disponível em API pública gratuita (LGPD). Preencha o nome manualmente.",
   };
 }
