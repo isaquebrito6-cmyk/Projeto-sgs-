@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import {
+  requireUser,
+  isAdmin,
+  assertClinicaAccess,
+  clinicaIdFilter,
+} from "@/lib/tenant";
 
 export type ClinicaFormData = {
   razaoSocial: string;
@@ -31,11 +36,14 @@ function cleanCNPJ(cnpj: string) {
 }
 
 export async function listClinicas() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const cid = clinicaIdFilter(user);
 
   return prisma.clinica.findMany({
-    where: { ativo: true },
+    where: {
+      ativo: true,
+      ...(cid ? { id: cid } : {}),
+    },
     orderBy: { razaoSocial: "asc" },
     include: {
       _count: { select: { medicos: true, asos: true } },
@@ -44,8 +52,8 @@ export async function listClinicas() {
 }
 
 export async function getClinica(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertClinicaAccess(user, id);
 
   return prisma.clinica.findUnique({
     where: { id },
@@ -57,8 +65,10 @@ export async function getClinica(id: string) {
 }
 
 export async function createClinica(data: ClinicaFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  if (!isAdmin(user)) {
+    return { error: "Apenas administrador pode cadastrar novas clínicas." };
+  }
 
   const cnpj = cleanCNPJ(data.cnpj);
   const existing = await prisma.clinica.findUnique({ where: { cnpj } });
@@ -83,8 +93,8 @@ export async function createClinica(data: ClinicaFormData) {
 }
 
 export async function updateClinica(id: string, data: ClinicaFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertClinicaAccess(user, id);
 
   const cnpj = cleanCNPJ(data.cnpj);
   const existing = await prisma.clinica.findFirst({ where: { cnpj, NOT: { id } } });
@@ -111,8 +121,8 @@ export async function updateClinica(id: string, data: ClinicaFormData) {
 }
 
 export async function deleteClinica(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  if (!isAdmin(user)) return { error: "Apenas administrador pode inativar clínicas." };
 
   await prisma.clinica.update({ where: { id }, data: { ativo: false } });
   revalidatePath("/clinicas");
@@ -120,8 +130,8 @@ export async function deleteClinica(id: string) {
 }
 
 export async function createMedico(data: MedicoFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertClinicaAccess(user, data.clinicaId);
 
   const medico = await prisma.medico.create({
     data: {
@@ -140,8 +150,8 @@ export async function createMedico(data: MedicoFormData) {
 }
 
 export async function deleteMedico(id: string, clinicaId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertClinicaAccess(user, clinicaId);
 
   await prisma.medico.update({ where: { id }, data: { ativo: false } });
   revalidatePath(`/clinicas/${clinicaId}`);

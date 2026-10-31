@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { requireUser, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant";
 
 export type PCMSOFormData = {
   titulo: string;
@@ -26,11 +26,12 @@ export type ExamePCMSOData = {
 };
 
 export async function listPCMSOs(empresaId?: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const scoped = empresaIdFilter(user);
+  const filter = scoped || empresaId;
 
   return prisma.pCMSO.findMany({
-    where: empresaId ? { empresaId } : undefined,
+    where: filter ? { empresaId: filter } : undefined,
     orderBy: { dataElaboracao: "desc" },
     include: {
       empresa: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
@@ -42,27 +43,26 @@ export async function listPCMSOs(empresaId?: string) {
 }
 
 export async function getPCMSO(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
 
-  return prisma.pCMSO.findUnique({
+  const pcmso = await prisma.pCMSO.findUnique({
     where: { id },
     include: {
       empresa: true,
-      pgr: {
-        include: {
-          inventarioItens: { include: { risco: true } },
-        },
-      },
+      pgr: { include: { inventarioItens: { include: { risco: true } } } },
       medicoCoordenador: true,
       exames: { orderBy: { createdAt: "asc" } },
     },
   });
+
+  if (!pcmso) return null;
+  assertEmpresaAccess(user, pcmso.empresaId);
+  return pcmso;
 }
 
 export async function createPCMSO(data: PCMSOFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertEmpresaAccess(user, data.empresaId);
 
   const pcmso = await prisma.pCMSO.create({
     data: {
@@ -79,7 +79,6 @@ export async function createPCMSO(data: PCMSOFormData) {
     },
   });
 
-  // Se vinculado a PGR, criar exames padrão com base nos riscos
   if (data.pgrId) {
     const pgr = await prisma.pGR.findUnique({
       where: { id: data.pgrId },
@@ -95,7 +94,6 @@ export async function createPCMSO(data: PCMSOFormData) {
         { nomeExame: "Exame Clínico Ocupacional", tipo: "Mudança de Riscos Ocupacionais", periodicidade: "—" },
       ];
 
-      // Adicionar exames complementares com base nos tipos de risco
       const tipos = new Set(pgr.inventarioItens.map((i) => i.risco.tipo));
       if (tipos.has("FISICO")) {
         examesPadrao.push({ nomeExame: "Audiometria", tipo: "Periódico", periodicidade: "Anual" });
@@ -106,9 +104,7 @@ export async function createPCMSO(data: PCMSOFormData) {
       }
 
       for (const ex of examesPadrao) {
-        await prisma.examePCMSO.create({
-          data: { pcmsoId: pcmso.id, ...ex },
-        });
+        await prisma.examePCMSO.create({ data: { pcmsoId: pcmso.id, ...ex } });
       }
     }
   }
@@ -119,8 +115,10 @@ export async function createPCMSO(data: PCMSOFormData) {
 }
 
 export async function addExamePCMSO(pcmsoId: string, data: ExamePCMSOData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pcmso = await prisma.pCMSO.findUnique({ where: { id: pcmsoId } });
+  if (!pcmso) return { error: "PCMSO não encontrado." };
+  assertEmpresaAccess(user, pcmso.empresaId);
 
   await prisma.examePCMSO.create({
     data: {
@@ -139,8 +137,10 @@ export async function addExamePCMSO(pcmsoId: string, data: ExamePCMSOData) {
 }
 
 export async function removeExamePCMSO(id: string, pcmsoId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pcmso = await prisma.pCMSO.findUnique({ where: { id: pcmsoId } });
+  if (!pcmso) return { error: "PCMSO não encontrado." };
+  assertEmpresaAccess(user, pcmso.empresaId);
 
   await prisma.examePCMSO.delete({ where: { id } });
   revalidatePath(`/pcmso/${pcmsoId}`);

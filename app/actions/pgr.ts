@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { requireUser, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant";
 import type { NivelRisco, TipoRisco } from "@prisma/client";
 
 export type PGRFormData = {
@@ -53,11 +53,12 @@ function calcNivel(prob?: number, sev?: number): NivelRisco | undefined {
 }
 
 export async function listPGRs(empresaId?: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const scoped = empresaIdFilter(user);
+  const filter = scoped || empresaId;
 
   return prisma.pGR.findMany({
-    where: empresaId ? { empresaId } : undefined,
+    where: filter ? { empresaId: filter } : undefined,
     orderBy: { dataElaboracao: "desc" },
     include: {
       empresa: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
@@ -68,26 +69,26 @@ export async function listPGRs(empresaId?: string) {
 }
 
 export async function getPGR(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
 
-  return prisma.pGR.findUnique({
+  const pgr = await prisma.pGR.findUnique({
     where: { id },
     include: {
       empresa: true,
-      inventarioItens: {
-        include: { risco: true },
-        orderBy: { createdAt: "asc" },
-      },
+      inventarioItens: { include: { risco: true }, orderBy: { createdAt: "asc" } },
       planoAcaoItens: { orderBy: { createdAt: "asc" } },
       pcmso: true,
     },
   });
+
+  if (!pgr) return null;
+  assertEmpresaAccess(user, pgr.empresaId);
+  return pgr;
 }
 
 export async function createPGR(data: PGRFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertEmpresaAccess(user, data.empresaId);
 
   const pgr = await prisma.pGR.create({
     data: {
@@ -108,8 +109,10 @@ export async function createPGR(data: PGRFormData) {
 }
 
 export async function updatePGR(id: string, data: Partial<PGRFormData> & { status?: string }) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const atual = await prisma.pGR.findUnique({ where: { id } });
+  if (!atual) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, atual.empresaId);
 
   await prisma.pGR.update({
     where: { id },
@@ -131,11 +134,12 @@ export async function updatePGR(id: string, data: Partial<PGRFormData> & { statu
 }
 
 export async function addInventarioItem(pgrId: string, data: InventarioItemData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pgr = await prisma.pGR.findUnique({ where: { id: pgrId } });
+  if (!pgr) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, pgr.empresaId);
 
   let riscoId = data.riscoId;
-
   if (!riscoId) {
     const risco = await prisma.risco.create({
       data: {
@@ -172,8 +176,10 @@ export async function addInventarioItem(pgrId: string, data: InventarioItemData)
 }
 
 export async function removeInventarioItem(id: string, pgrId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pgr = await prisma.pGR.findUnique({ where: { id: pgrId } });
+  if (!pgr) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, pgr.empresaId);
 
   await prisma.inventarioRiscoItem.delete({ where: { id } });
   revalidatePath(`/pgr/${pgrId}`);
@@ -181,8 +187,10 @@ export async function removeInventarioItem(id: string, pgrId: string) {
 }
 
 export async function addPlanoAcaoItem(pgrId: string, data: PlanoAcaoData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pgr = await prisma.pGR.findUnique({ where: { id: pgrId } });
+  if (!pgr) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, pgr.empresaId);
 
   await prisma.planoAcaoItem.create({
     data: {
@@ -202,8 +210,10 @@ export async function addPlanoAcaoItem(pgrId: string, data: PlanoAcaoData) {
 }
 
 export async function removePlanoAcaoItem(id: string, pgrId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pgr = await prisma.pGR.findUnique({ where: { id: pgrId } });
+  if (!pgr) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, pgr.empresaId);
 
   await prisma.planoAcaoItem.delete({ where: { id } });
   revalidatePath(`/pgr/${pgrId}`);
@@ -211,8 +221,10 @@ export async function removePlanoAcaoItem(id: string, pgrId: string) {
 }
 
 export async function updatePlanoAcaoStatus(id: string, status: string, pgrId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const pgr = await prisma.pGR.findUnique({ where: { id: pgrId } });
+  if (!pgr) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, pgr.empresaId);
 
   await prisma.planoAcaoItem.update({ where: { id }, data: { status } });
   revalidatePath(`/pgr/${pgrId}`);

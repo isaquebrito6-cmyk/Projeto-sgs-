@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { requireUser, isAdmin, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant";
 
 export type ColaboradorFormData = {
   nome: string;
@@ -22,13 +22,14 @@ function cleanCPF(cpf: string) {
 }
 
 export async function listColaboradores(empresaId?: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  const scoped = empresaIdFilter(user);
+  const filterEmpresa = scoped || empresaId;
 
   return prisma.colaborador.findMany({
     where: {
       ativo: true,
-      ...(empresaId ? { empresaId } : {}),
+      ...(filterEmpresa ? { empresaId: filterEmpresa } : {}),
     },
     orderBy: { nome: "asc" },
     include: {
@@ -40,39 +41,33 @@ export async function listColaboradores(empresaId?: string) {
 }
 
 export async function getColaborador(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
 
-  return prisma.colaborador.findUnique({
+  const colab = await prisma.colaborador.findUnique({
     where: { id },
     include: {
       empresa: true,
       setor: true,
       funcao: true,
-      asos: {
-        orderBy: { dataEmissao: "desc" },
-        take: 10,
-      },
-      solicitacoesExame: {
-        orderBy: { dataSolicitacao: "desc" },
-        take: 10,
-      },
+      asos: { orderBy: { dataEmissao: "desc" }, take: 10 },
+      solicitacoesExame: { orderBy: { dataSolicitacao: "desc" }, take: 10 },
     },
   });
+
+  if (!colab) return null;
+  assertEmpresaAccess(user, colab.empresaId);
+  return colab;
 }
 
 export async function createColaborador(data: ColaboradorFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertEmpresaAccess(user, data.empresaId);
 
   const cpf = cleanCPF(data.cpf);
-
   const existing = await prisma.colaborador.findFirst({
     where: { empresaId: data.empresaId, cpf },
   });
-  if (existing) {
-    return { error: "Já existe um colaborador com este CPF nesta empresa." };
-  }
+  if (existing) return { error: "Já existe um colaborador com este CPF nesta empresa." };
 
   const colaborador = await prisma.colaborador.create({
     data: {
@@ -95,21 +90,14 @@ export async function createColaborador(data: ColaboradorFormData) {
 }
 
 export async function updateColaborador(id: string, data: ColaboradorFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertEmpresaAccess(user, data.empresaId);
 
   const cpf = cleanCPF(data.cpf);
-
   const existing = await prisma.colaborador.findFirst({
-    where: {
-      empresaId: data.empresaId,
-      cpf,
-      NOT: { id },
-    },
+    where: { empresaId: data.empresaId, cpf, NOT: { id } },
   });
-  if (existing) {
-    return { error: "Já existe outro colaborador com este CPF nesta empresa." };
-  }
+  if (existing) return { error: "Já existe outro colaborador com este CPF nesta empresa." };
 
   await prisma.colaborador.update({
     where: { id },
@@ -134,15 +122,14 @@ export async function updateColaborador(id: string, data: ColaboradorFormData) {
 }
 
 export async function deleteColaborador(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
 
-  const colab = await prisma.colaborador.update({
-    where: { id },
-    data: { ativo: false },
-  });
+  const atual = await prisma.colaborador.findUnique({ where: { id } });
+  if (!atual) return { error: "Colaborador não encontrado." };
+  assertEmpresaAccess(user, atual.empresaId);
 
+  await prisma.colaborador.update({ where: { id }, data: { ativo: false } });
   revalidatePath("/colaboradores");
-  revalidatePath(`/empresas/${colab.empresaId}`);
+  revalidatePath(`/empresas/${atual.empresaId}`);
   return { success: true };
 }

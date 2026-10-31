@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import {
+  requireUser,
+  isAdmin,
+  assertEmpresaAccess,
+  canManageCatalog,
+} from "@/lib/tenant";
 
 export type EmpresaFormData = {
   razaoSocial: string;
@@ -25,44 +30,48 @@ function cleanCNPJ(cnpj: string) {
 }
 
 export async function listEmpresas() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+
+  const where =
+    isAdmin(user)
+      ? { ativo: true }
+      : user.role === "EMPRESA" && user.empresaId
+        ? { ativo: true, id: user.empresaId }
+        : { ativo: true, id: "__none__" };
 
   return prisma.empresa.findMany({
-    where: { ativo: true },
+    where,
     orderBy: { razaoSocial: "asc" },
     include: {
-      _count: {
-        select: { colaboradores: true, pgrs: true },
-      },
+      _count: { select: { colaboradores: true, pgrs: true } },
     },
   });
 }
 
 export async function getEmpresa(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertEmpresaAccess(user, id);
 
   return prisma.empresa.findUnique({
     where: { id },
     include: {
-      _count: {
-        select: { colaboradores: true, pgrs: true, setores: true },
-      },
+      _count: { select: { colaboradores: true, pgrs: true, setores: true } },
     },
   });
 }
 
 export async function createEmpresa(data: EmpresaFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  if (!canManageCatalog(user) && user.role !== "ADMIN") {
+    // EMPRESA não cria outra empresa
+    if (user.role === "EMPRESA") {
+      return { error: "Seu perfil só acessa a empresa vinculada. Contate o administrador." };
+    }
+  }
 
   const cnpj = cleanCNPJ(data.cnpj);
-
   const existing = await prisma.empresa.findUnique({ where: { cnpj } });
-  if (existing) {
-    return { error: "Já existe uma empresa cadastrada com este CNPJ." };
-  }
+  if (existing) return { error: "Já existe uma empresa cadastrada com este CNPJ." };
 
   const empresa = await prisma.empresa.create({
     data: {
@@ -87,17 +96,12 @@ export async function createEmpresa(data: EmpresaFormData) {
 }
 
 export async function updateEmpresa(id: string, data: EmpresaFormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  assertEmpresaAccess(user, id);
 
   const cnpj = cleanCNPJ(data.cnpj);
-
-  const existing = await prisma.empresa.findFirst({
-    where: { cnpj, NOT: { id } },
-  });
-  if (existing) {
-    return { error: "Já existe outra empresa cadastrada com este CNPJ." };
-  }
+  const existing = await prisma.empresa.findFirst({ where: { cnpj, NOT: { id } } });
+  if (existing) return { error: "Já existe outra empresa cadastrada com este CNPJ." };
 
   await prisma.empresa.update({
     where: { id },
@@ -124,15 +128,10 @@ export async function updateEmpresa(id: string, data: EmpresaFormData) {
 }
 
 export async function deleteEmpresa(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado");
+  const user = await requireUser();
+  if (!isAdmin(user)) return { error: "Apenas administrador pode inativar empresas." };
 
-  // Soft delete
-  await prisma.empresa.update({
-    where: { id },
-    data: { ativo: false },
-  });
-
+  await prisma.empresa.update({ where: { id }, data: { ativo: false } });
   revalidatePath("/empresas");
   return { success: true };
 }
