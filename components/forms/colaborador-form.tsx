@@ -8,11 +8,11 @@ import {
   type ColaboradorFormData,
 } from "@/app/actions/colaboradores";
 import { listSetores } from "@/app/actions/setores";
-import { actionValidarCPF } from "@/app/actions/brasil";
+import { actionBuscarCPF, actionValidarCPF } from "@/app/actions/brasil";
 import { formatCPFMask } from "@/lib/brasil";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2, Search } from "lucide-react";
 
 type EmpresaOption = {
   id: string;
@@ -56,6 +56,7 @@ export function ColaboradorForm({
   const isEditing = !!colaborador;
 
   const [loading, setLoading] = useState(false);
+  const [loadingCpf, setLoadingCpf] = useState(false);
   const [error, setError] = useState("");
   const [cpfMsg, setCpfMsg] = useState("");
   const [setores, setSetores] = useState<SetorComFuncoes[]>([]);
@@ -98,14 +99,39 @@ export function ColaboradorForm({
     });
   }
 
-  async function handleCpfBlur() {
+  async function handleBuscarCpf() {
     const digits = form.cpf.replace(/\D/g, "");
     if (digits.length !== 11) {
-      setCpfMsg("");
+      setCpfMsg("Informe os 11 dígitos do CPF.");
       return;
     }
-    const result = await actionValidarCPF(digits);
-    setCpfMsg(result.message);
+
+    setLoadingCpf(true);
+    setCpfMsg("");
+    setError("");
+
+    try {
+      const result = await actionBuscarCPF(digits);
+
+      if ("error" in result) {
+        setCpfMsg(result.error);
+        return;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        cpf: result.cpf,
+        nome: result.nome || prev.nome,
+        dataNascimento: result.dataNascimento || prev.dataNascimento,
+        sexo: result.sexo || prev.sexo,
+        email: result.email || prev.email,
+        telefone: result.telefone || prev.telefone,
+      }));
+
+      setCpfMsg(result.message);
+    } finally {
+      setLoadingCpf(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -163,39 +189,74 @@ export function ColaboradorForm({
           )}
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2 space-y-2">
-              <label className="text-sm font-medium">Nome completo *</label>
-              <input required value={form.nome} onChange={(e) => update("nome", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-            </div>
-            <div className="space-y-2">
+            <div className="space-y-2 sm:col-span-2">
               <label className="text-sm font-medium">CPF *</label>
-              <input
-                required
-                value={form.cpf}
-                onChange={(e) => update("cpf", formatCPFMask(e.target.value))}
-                onBlur={handleCpfBlur}
-                placeholder="000.000.000-00"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <div className="flex gap-2">
+                <input
+                  required
+                  value={form.cpf}
+                  onChange={(e) => update("cpf", formatCPFMask(e.target.value))}
+                  onBlur={() => {
+                    if (form.cpf.replace(/\D/g, "").length === 11) handleBuscarCpf();
+                  }}
+                  placeholder="000.000.000-00"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loadingCpf}
+                  onClick={handleBuscarCpf}
+                  className="shrink-0"
+                >
+                  {loadingCpf ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
               {cpfMsg && (
-                <p className={`text-xs ${cpfMsg.includes("inválido") ? "text-red-600" : "text-emerald-600"}`}>
+                <p
+                  className={`text-xs ${
+                    cpfMsg.includes("inválido") || cpfMsg.includes("11 dígitos")
+                      ? "text-red-600"
+                      : cpfMsg.includes("encontrados")
+                        ? "text-emerald-600"
+                        : "text-slate-500"
+                  }`}
+                >
                   {cpfMsg}
                 </p>
               )}
-              <p className="text-xs text-slate-400">
-                Dados pessoais por CPF exigem API paga e base legal (LGPD). Aqui validamos o número.
-              </p>
             </div>
+
+            <div className="sm:col-span-2 space-y-2">
+              <label className="text-sm font-medium">Nome completo *</label>
+              <input
+                required
+                value={form.nome}
+                onChange={(e) => update("nome", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de nascimento</label>
-              <input type="date" value={form.dataNascimento} onChange={(e) => update("dataNascimento", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                type="date"
+                value={form.dataNascimento}
+                onChange={(e) => update("dataNascimento", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Sexo</label>
-              <select value={form.sexo} onChange={(e) => update("sexo", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select
+                value={form.sexo}
+                onChange={(e) => update("sexo", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <option value="">Selecione</option>
                 <option value="M">Masculino</option>
                 <option value="F">Feminino</option>
@@ -204,13 +265,21 @@ export function ColaboradorForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">E-mail</label>
-              <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Telefone</label>
-              <input value={form.telefone} onChange={(e) => update("telefone", e.target.value)} placeholder="(00) 00000-0000"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.telefone}
+                onChange={(e) => update("telefone", e.target.value)}
+                placeholder="(00) 00000-0000"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
 
             <div className="sm:col-span-2 border-t pt-4 mt-2">
@@ -219,8 +288,12 @@ export function ColaboradorForm({
 
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Empresa *</label>
-              <select required value={form.empresaId} onChange={(e) => update("empresaId", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select
+                required
+                value={form.empresaId}
+                onChange={(e) => update("empresaId", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <option value="">Selecione a empresa</option>
                 {empresas.map((emp) => (
                   <option key={emp.id} value={emp.id}>
@@ -231,34 +304,48 @@ export function ColaboradorForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Setor</label>
-              <select value={form.setorId} onChange={(e) => update("setorId", e.target.value)}
+              <select
+                value={form.setorId}
+                onChange={(e) => update("setorId", e.target.value)}
                 disabled={!form.empresaId || setores.length === 0}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
                 <option value="">
                   {setores.length === 0 ? "Nenhum setor cadastrado" : "Selecione o setor"}
                 </option>
                 {setores.map((s) => (
-                  <option key={s.id} value={s.id}>{s.nome}</option>
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Função</label>
-              <select value={form.funcaoId} onChange={(e) => update("funcaoId", e.target.value)}
+              <select
+                value={form.funcaoId}
+                onChange={(e) => update("funcaoId", e.target.value)}
                 disabled={!form.setorId || funcoesDoSetor.length === 0}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
                 <option value="">
                   {funcoesDoSetor.length === 0 ? "Nenhuma função" : "Selecione a função"}
                 </option>
                 {funcoesDoSetor.map((f) => (
-                  <option key={f.id} value={f.id}>{f.nome}</option>
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de admissão</label>
-              <input type="date" value={form.dataAdmissao} onChange={(e) => update("dataAdmissao", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                type="date"
+                value={form.dataAdmissao}
+                onChange={(e) => update("dataAdmissao", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
           </div>
 
