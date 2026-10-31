@@ -1,12 +1,12 @@
 // SGS - Sistema de Gestão em Segurança do Trabalho
-// Schema Prisma — modelos principais
+// Schema Prisma — PostgreSQL (produção Vercel + Neon)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -33,7 +33,6 @@ model User {
   accounts      Account[]
   sessions      Session[]
 
-  // Relacionamentos de negócio
   empresa       Empresa?  @relation(fields: [empresaId], references: [id])
   empresaId     String?
   clinica       Clinica?  @relation(fields: [clinicaId], references: [id])
@@ -79,128 +78,128 @@ model VerificationToken {
 // ==================== EMPRESAS E CLÍNICAS ====================
 
 model Empresa {
-  id              String   @id @default(cuid())
-  razaoSocial     String
-  nomeFantasia    String?
-  cnpj            String   @unique
-  inscricaoEstadual String?
-  endereco        String?
-  cidade          String?
-  uf              String?
-  cep             String?
-  telefone        String?
-  email           String?
-  grauRisco       Int?     // 1 a 4 (NR-4)
-  cnae            String?
+  id                 String   @id @default(cuid())
+  razaoSocial        String
+  nomeFantasia       String?
+  cnpj               String   @unique
+  inscricaoEstadual  String?
+  endereco           String?
+  cidade             String?
+  uf                 String?
+  cep                String?
+  telefone           String?
+  email              String?
+  grauRisco          Int?
+  cnae               String?
   numeroFuncionarios Int?
-  logoUrl         String?
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  logoUrl            String?
+  ativo              Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  users           User[]
-  setores         Setor[]
-  colaboradores   Colaborador[]
-  pgrs            PGR[]
-  pcmso           PCMSO[]
-  solicitacoesExame SolicitacaoExame[]
+  users              User[]
+  setores            Setor[]
+  colaboradores      Colaborador[]
+  pgrs               PGR[]
+  pcmso              PCMSO[]
+  solicitacoesExame  SolicitacaoExame[]
 }
 
 model Clinica {
-  id              String   @id @default(cuid())
-  razaoSocial     String
-  nomeFantasia    String?
-  cnpj            String   @unique
-  endereco        String?
-  cidade          String?
-  uf              String?
-  cep             String?
-  telefone        String?
-  email           String?
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(cuid())
+  razaoSocial String
+  nomeFantasia String?
+  cnpj        String   @unique
+  endereco    String?
+  cidade      String?
+  uf          String?
+  cep         String?
+  telefone    String?
+  email       String?
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  users           User[]
-  medicos         Medico[]
-  solicitacoesExame SolicitacaoExame[]
-  asos            ASO[]
+  users              User[]
+  medicos            Medico[]
+  solicitacoesExame  SolicitacaoExame[]
+  asos               ASO[]
 }
 
 model Medico {
-  id              String   @id @default(cuid())
-  nome            String
-  crm             String
-  crmUf           String
-  especialidade   String?  // "Medicina do Trabalho" etc.
-  telefone        String?
-  email           String?
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  nome          String
+  crm           String
+  crmUf         String
+  especialidade String?
+  telefone      String?
+  email         String?
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user            User?    @relation(fields: [userId], references: [id])
-  userId          String?  @unique
-  clinica         Clinica  @relation(fields: [clinicaId], references: [id])
-  clinicaId       String
+  user              User?    @relation(fields: [userId], references: [id])
+  userId            String?  @unique
+  clinica           Clinica  @relation(fields: [clinicaId], references: [id])
+  clinicaId         String
 
-  pcmsoCoordenados PCMSO[] @relation("MedicoCoordenador")
-  asosEmitidos    ASO[]
+  pcmsoCoordenados  PCMSO[]  @relation("MedicoCoordenador")
+  asosEmitidos      ASO[]
 }
 
 // ==================== COLABORADORES E ESTRUTURA ====================
 
 model Setor {
-  id              String   @id @default(cuid())
-  nome            String
-  descricao       String?
-  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(cuid())
+  nome        String
+  descricao   String?
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  funcoes         Funcao[]
-  ghes            GHE[]
-  colaboradores   Colaborador[]
+  funcoes       Funcao[]
+  ghes          GHE[]
+  colaboradores Colaborador[]
 }
 
 model Funcao {
-  id              String   @id @default(cuid())
-  nome            String
-  descricao       String?
-  cbo             String?  // Código Brasileiro de Ocupações
-  setor           Setor    @relation(fields: [setorId], references: [id], onDelete: Cascade)
-  setorId         String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  cbo       String?
+  setor     Setor    @relation(fields: [setorId], references: [id], onDelete: Cascade)
+  setorId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  colaboradores   Colaborador[]
-  riscos          RiscoFuncao[]
+  colaboradores Colaborador[]
+  riscos        RiscoFuncao[]
 }
 
 model Colaborador {
-  id              String   @id @default(cuid())
-  nome            String
-  cpf             String
-  dataNascimento  DateTime?
-  sexo            String?  // M, F, Outro
-  email           String?
-  telefone        String?
-  dataAdmissao    DateTime?
-  dataDemissao    DateTime?
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(cuid())
+  nome           String
+  cpf            String
+  dataNascimento DateTime?
+  sexo           String?
+  email          String?
+  telefone       String?
+  dataAdmissao   DateTime?
+  dataDemissao   DateTime?
+  ativo          Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId       String
-  setor           Setor?   @relation(fields: [setorId], references: [id])
-  setorId         String?
-  funcao          Funcao?  @relation(fields: [funcaoId], references: [id])
-  funcaoId        String?
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId String
+  setor     Setor?   @relation(fields: [setorId], references: [id])
+  setorId   String?
+  funcao    Funcao?  @relation(fields: [funcaoId], references: [id])
+  funcaoId  String?
 
   solicitacoesExame SolicitacaoExame[]
-  asos            ASO[]
+  asos              ASO[]
 
   @@unique([empresaId, cpf])
 }
@@ -224,14 +223,14 @@ enum NivelRisco {
 }
 
 model Risco {
-  id              String     @id @default(cuid())
-  nome            String
-  tipo            TipoRisco
-  descricao       String?
-  fonteGeradora   String?
+  id               String     @id @default(cuid())
+  nome             String
+  tipo             TipoRisco
+  descricao        String?
+  fonteGeradora    String?
   possiveisAgravos String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   funcoes         RiscoFuncao[]
   ghes            RiscoGHE[]
@@ -240,40 +239,40 @@ model Risco {
 }
 
 model RiscoFuncao {
-  id              String   @id @default(cuid())
-  risco           Risco    @relation(fields: [riscoId], references: [id], onDelete: Cascade)
-  riscoId         String
-  funcao          Funcao   @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
-  funcaoId        String
-  nivelRisco      NivelRisco?
-  probabilidade   Int?     // 1-5
-  severidade      Int?     // 1-5
+  id                String      @id @default(cuid())
+  risco             Risco       @relation(fields: [riscoId], references: [id], onDelete: Cascade)
+  riscoId           String
+  funcao            Funcao      @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
+  funcaoId          String
+  nivelRisco        NivelRisco?
+  probabilidade     Int?
+  severidade        Int?
   medidasExistentes String?
 
   @@unique([riscoId, funcaoId])
 }
 
 model GHE {
-  id              String   @id @default(cuid())
-  nome            String
-  descricao       String?
-  setor           Setor    @relation(fields: [setorId], references: [id], onDelete: Cascade)
-  setorId         String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  setor     Setor    @relation(fields: [setorId], references: [id], onDelete: Cascade)
+  setorId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  riscos          RiscoGHE[]
+  riscos RiscoGHE[]
 }
 
 model RiscoGHE {
-  id              String   @id @default(cuid())
-  ghe             GHE      @relation(fields: [gheId], references: [id], onDelete: Cascade)
-  gheId           String
-  risco           Risco    @relation(fields: [riscoId], references: [id], onDelete: Cascade)
-  riscoId         String
-  nivelRisco      NivelRisco?
-  probabilidade   Int?
-  severidade      Int?
+  id            String      @id @default(cuid())
+  ghe           GHE         @relation(fields: [gheId], references: [id], onDelete: Cascade)
+  gheId         String
+  risco         Risco       @relation(fields: [riscoId], references: [id], onDelete: Cascade)
+  riscoId       String
+  nivelRisco    NivelRisco?
+  probabilidade Int?
+  severidade    Int?
 
   @@unique([gheId, riscoId])
 }
@@ -288,119 +287,105 @@ enum StatusDocumento {
 }
 
 model PGR {
-  id              String          @id @default(cuid())
-  titulo          String
-  versao          String          @default("1.0")
-  dataElaboracao  DateTime        @default(now())
-  dataRevisao     DateTime?
-  status          StatusDocumento @default(RASCUNHO)
-  elaboradorNome  String?
-  elaboradorRegistro String?      // CREA, etc.
-  observacoes     String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                     String          @id @default(cuid())
+  titulo                 String
+  versao                 String          @default("1.0")
+  dataElaboracao         DateTime        @default(now())
+  dataRevisao            DateTime?
+  status                 StatusDocumento @default(RASCUNHO)
+  elaboradorNome         String?
+  elaboradorRegistro     String?
+  observacoes            String?
+  caracterizacaoProcessos String?
+  metodologiaAvaliacao   String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 
-  empresa         Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa         Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId       String
-
   inventarioItens InventarioRiscoItem[]
   planoAcaoItens  PlanoAcaoItem[]
   pcmso           PCMSO?
-
-  // Campos textuais do documento
-  caracterizacaoProcessos String? // Descrição dos processos e ambientes
-  metodologiaAvaliacao    String?
 }
 
 model InventarioRiscoItem {
-  id              String     @id @default(cuid())
-  pgr             PGR        @relation(fields: [pgrId], references: [id], onDelete: Cascade)
-  pgrId           String
-  risco           Risco      @relation(fields: [riscoId], references: [id])
-  riscoId         String
-
-  setorNome       String?
-  funcaoNome      String?
-  gheNome         String?
-  fonteGeradora   String?
-  numeroExpostos  Int?
-  tipoExposicao   String?    // Contínua, Intermitente, etc.
-  probabilidade   Int?       // 1-5
-  severidade      Int?       // 1-5
-  nivelRisco      NivelRisco?
-  medidasExistentes String?
-  necessidadeAvaliacaoQuantitativa Boolean @default(false)
-  resultadoAvaliacao String?
-  observacoes     String?
-
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id                               String      @id @default(cuid())
+  pgr                              PGR         @relation(fields: [pgrId], references: [id], onDelete: Cascade)
+  pgrId                            String
+  risco                            Risco       @relation(fields: [riscoId], references: [id])
+  riscoId                          String
+  setorNome                        String?
+  funcaoNome                       String?
+  gheNome                          String?
+  fonteGeradora                    String?
+  numeroExpostos                   Int?
+  tipoExposicao                    String?
+  probabilidade                    Int?
+  severidade                       Int?
+  nivelRisco                       NivelRisco?
+  medidasExistentes                String?
+  necessidadeAvaliacaoQuantitativa Boolean     @default(false)
+  resultadoAvaliacao               String?
+  observacoes                      String?
+  createdAt                        DateTime    @default(now())
+  updatedAt                        DateTime    @updatedAt
 }
 
 model PlanoAcaoItem {
-  id              String   @id @default(cuid())
-  pgr             PGR      @relation(fields: [pgrId], references: [id], onDelete: Cascade)
-  pgrId           String
-
-  descricaoAcao   String
+  id               String    @id @default(cuid())
+  pgr              PGR       @relation(fields: [pgrId], references: [id], onDelete: Cascade)
+  pgrId            String
+  descricaoAcao    String
   riscoRelacionado String?
-  responsavel     String?
-  prazo           DateTime?
-  status          String   @default("Pendente") // Pendente, Em andamento, Concluído
-  prioridade      String?  // Alta, Média, Baixa
-  observacoes     String?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  responsavel      String?
+  prazo            DateTime?
+  status           String    @default("Pendente")
+  prioridade       String?
+  observacoes      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 // ==================== PCMSO ====================
 
 model PCMSO {
-  id              String          @id @default(cuid())
-  titulo          String
-  versao          String          @default("1.0")
-  dataElaboracao  DateTime        @default(now())
-  dataRevisao     DateTime?
-  status          StatusDocumento @default(RASCUNHO)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                  String          @id @default(cuid())
+  titulo              String
+  versao              String          @default("1.0")
+  dataElaboracao      DateTime        @default(now())
+  dataRevisao         DateTime?
+  status              StatusDocumento @default(RASCUNHO)
+  objetivos           String?
+  diretrizes          String?
+  responsavelNome     String?
+  responsavelCrm      String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
-  empresa         Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId       String
-
-  pgr             PGR?            @relation(fields: [pgrId], references: [id])
-  pgrId           String?         @unique
-
-  medicoCoordenador Medico?       @relation("MedicoCoordenador", fields: [medicoCoordenadorId], references: [id])
+  empresa             Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId           String
+  pgr                 PGR?     @relation(fields: [pgrId], references: [id])
+  pgrId               String?  @unique
+  medicoCoordenador   Medico?  @relation("MedicoCoordenador", fields: [medicoCoordenadorId], references: [id])
   medicoCoordenadorId String?
-
-  exames          ExamePCMSO[]
-
-  // Conteúdo textual
-  objetivos       String?
-  diretrizes      String?
-  responsavelNome String?
-  responsavelCrm  String?
+  exames              ExamePCMSO[]
 }
 
 model ExamePCMSO {
-  id              String   @id @default(cuid())
-  pcmso           PCMSO    @relation(fields: [pcmsoId], references: [id], onDelete: Cascade)
-  pcmsoId         String
-
-  nomeExame       String   // Clínico, Audiometria, Espirometria, Hemograma, etc.
-  tipo            String   // Admissional, Periódico, Retorno, Mudança de Risco, Demissional
-  periodicidade   String?  // Anual, Bienal, etc.
-  risco           Risco?   @relation(fields: [riscoId], references: [id])
-  riscoId         String?
-  setoresAplicaveis String? // JSON ou texto
-  funcoesAplicaveis String?
+  id                     String   @id @default(cuid())
+  pcmso                  PCMSO    @relation(fields: [pcmsoId], references: [id], onDelete: Cascade)
+  pcmsoId                String
+  nomeExame              String
+  tipo                   String
+  periodicidade          String?
+  risco                  Risco?   @relation(fields: [riscoId], references: [id])
+  riscoId                String?
+  setoresAplicaveis      String?
+  funcoesAplicaveis      String?
   criteriosInterpretacao String?
-  observacoes     String?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  observacoes            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 // ==================== FLUXO DE EXAMES E ASO ====================
@@ -414,72 +399,57 @@ enum StatusSolicitacao {
 }
 
 model SolicitacaoExame {
-  id              String            @id @default(cuid())
-  tipoExame       String            // Admissional, Periódico, Retorno ao Trabalho, Mudança de Risco, Demissional
-  status          StatusSolicitacao @default(PENDENTE)
-  dataSolicitacao DateTime          @default(now())
-  dataAgendamento DateTime?
-  observacoes     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                String            @id @default(cuid())
+  tipoExame         String
+  status            StatusSolicitacao @default(PENDENTE)
+  dataSolicitacao   DateTime          @default(now())
+  dataAgendamento   DateTime?
+  observacoes       String?
+  riscosInformados  String?
+  examesSolicitados String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  empresa         Empresa           @relation(fields: [empresaId], references: [id])
-  empresaId       String
-  colaborador     Colaborador       @relation(fields: [colaboradorId], references: [id])
-  colaboradorId   String
-  clinica         Clinica?          @relation(fields: [clinicaId], references: [id])
-  clinicaId       String?
-
-  // Dados pré-preenchidos do ASO
-  riscosInformados String?          // Texto com os riscos do PGR/PCMSO
-  examesSolicitados String?         // Lista de exames
-
-  aso             ASO?
+  empresa       Empresa     @relation(fields: [empresaId], references: [id])
+  empresaId     String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id])
+  colaboradorId String
+  clinica       Clinica?    @relation(fields: [clinicaId], references: [id])
+  clinicaId     String?
+  aso           ASO?
 }
 
 model ASO {
-  id              String   @id @default(cuid())
-  numero          String?  // Número interno
-  dataEmissao     DateTime @default(now())
-  dataExame       DateTime?
+  id                   String    @id @default(cuid())
+  numero               String?
+  dataEmissao          DateTime  @default(now())
+  dataExame            DateTime?
+  razaoSocialEmpresa   String
+  cnpjEmpresa          String
+  nomeColaborador      String
+  cpfColaborador       String
+  funcaoColaborador    String?
+  riscosOcupacionais   String?
+  examesRealizados     String?
+  conclusao            String
+  restricoes           String?
+  medicoNome           String?
+  medicoCrm            String?
+  medicoCrmUf          String?
+  medicoCoordNome      String?
+  medicoCoordCrm       String?
+  arquivoUrl           String?
+  observacoes          String?
+  checklistPsicossocial String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  // Campos obrigatórios NR-7 item 7.5.19.1
-  razaoSocialEmpresa String
-  cnpjEmpresa     String
-  nomeColaborador String
-  cpfColaborador  String
-  funcaoColaborador String?
-  riscosOcupacionais String? // Descrição dos perigos/fatores de risco do PGR
-  examesRealizados String?  // Indicação e data dos exames
-  conclusao       String    // APTO ou INAPTO
-  restricoes      String?   // Se houver
-
-  // Médico examinador
-  medicoNome      String?
-  medicoCrm       String?
-  medicoCrmUf     String?
-
-  // Médico coordenador do PCMSO
-  medicoCoordNome String?
-  medicoCoordCrm  String?
-
-  // Arquivo
-  arquivoUrl      String?   // PDF assinado / upload
-  observacoes     String?
-
-  // Checklist psicossocial (respostas do colaborador)
-  checklistPsicossocial String? // JSON com respostas
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  solicitacao     SolicitacaoExame @relation(fields: [solicitacaoId], references: [id])
-  solicitacaoId   String   @unique
-
-  colaborador     Colaborador @relation(fields: [colaboradorId], references: [id])
-  colaboradorId   String
-  clinica         Clinica  @relation(fields: [clinicaId], references: [id])
-  clinicaId       String
-  medico          Medico?  @relation(fields: [medicoId], references: [id])
-  medicoId        String?
+  solicitacao   SolicitacaoExame @relation(fields: [solicitacaoId], references: [id])
+  solicitacaoId String           @unique
+  colaborador   Colaborador      @relation(fields: [colaboradorId], references: [id])
+  colaboradorId String
+  clinica       Clinica          @relation(fields: [clinicaId], references: [id])
+  clinicaId     String
+  medico        Medico?          @relation(fields: [medicoId], references: [id])
+  medicoId      String?
 }
