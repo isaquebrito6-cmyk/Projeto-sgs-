@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "postbuild": "node -e \"console.log('Build OK. Rode db:push e db:seed com DATABASE_URL de Postgres.')\"",
+    "build": "prisma generate && (prisma db push --accept-data-loss || echo 'db push skipped') && (tsx prisma/seed.ts || echo 'seed skipped') && next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",

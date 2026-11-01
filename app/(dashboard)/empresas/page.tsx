@@ -1,12 +1,21 @@
 import Link from "next/link";
-import { Plus, Building2, Users, FileText, Search } from "lucide-react";
+import { Plus, Building2, Users, FileText } from "lucide-react";
 import { listEmpresas } from "@/app/actions/empresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCNPJ } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export default async function EmpresasPage() {
-  const empresas = await listEmpresas();
+  let empresas: Awaited<ReturnType<typeof listEmpresas>> = [];
+  let dbError = false;
+
+  try {
+    empresas = await listEmpresas();
+  } catch {
+    dbError = true;
+  }
 
   return (
     <div className="space-y-6">
@@ -24,6 +33,13 @@ export default async function EmpresasPage() {
           </Button>
         </Link>
       </div>
+
+      {dbError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Não foi possível carregar as empresas. Confira o <strong>DATABASE_URL</strong> (Postgres)
+          nas variáveis da Vercel e faça Redeploy para criar as tabelas.
+        </div>
+      )}
 
       {empresas.length === 0 ? (
         <Card>
