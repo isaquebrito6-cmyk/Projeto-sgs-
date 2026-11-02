@@ -11,7 +11,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, testDatabase } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -26,26 +26,34 @@ export default async function DashboardPage() {
   let clinicas = 0;
   let pcmso = 0;
   let dbOk = true;
+  let dbMessage = "";
 
-  try {
-    const [e, c, p, a, cl, pc] = await Promise.all([
-      prisma.empresa.count({ where: { ativo: true } }),
-      prisma.colaborador.count({ where: { ativo: true } }),
-      prisma.pGR.count({ where: { status: { not: "VENCIDO" } } }),
-      prisma.solicitacaoExame.count({
-        where: { status: { in: ["PENDENTE", "ENVIADA_CLINICA", "EM_ATENDIMENTO"] } },
-      }),
-      prisma.clinica.count({ where: { ativo: true } }),
-      prisma.pCMSO.count({ where: { status: { not: "VENCIDO" } } }),
-    ]);
-    empresas = e;
-    colaboradores = c;
-    pgrs = p;
-    asosPendentes = a;
-    clinicas = cl;
-    pcmso = pc;
-  } catch {
-    dbOk = false;
+  const dbTest = await testDatabase();
+  dbOk = dbTest.ok;
+  dbMessage = dbTest.message;
+
+  if (dbOk) {
+    try {
+      const [e, c, p, a, cl, pc] = await Promise.all([
+        prisma.empresa.count({ where: { ativo: true } }),
+        prisma.colaborador.count({ where: { ativo: true } }),
+        prisma.pGR.count({ where: { status: { not: "VENCIDO" } } }),
+        prisma.solicitacaoExame.count({
+          where: { status: { in: ["PENDENTE", "ENVIADA_CLINICA", "EM_ATENDIMENTO"] } },
+        }),
+        prisma.clinica.count({ where: { ativo: true } }),
+        prisma.pCMSO.count({ where: { status: { not: "VENCIDO" } } }),
+      ]);
+      empresas = e;
+      colaboradores = c;
+      pgrs = p;
+      asosPendentes = a;
+      clinicas = cl;
+      pcmso = pc;
+    } catch {
+      dbOk = false;
+      dbMessage = "Falha ao ler tabelas. Rode Redeploy para criar o schema (prisma db push).";
+    }
   }
 
   const stats = [
@@ -65,9 +73,23 @@ export default async function DashboardPage() {
       </div>
 
       {!dbOk && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>Banco de dados:</strong> não foi possível conectar. Configure o{" "}
-          <code className="bg-amber-100 px-1 rounded">DATABASE_URL</code> com Postgres (Neon) nas variáveis da Vercel e faça Redeploy.
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-1">
+          <p>
+            <strong>Banco de dados:</strong> não foi possível conectar.
+          </p>
+          <p className="text-xs text-amber-800/80 break-all">{dbMessage}</p>
+          <p className="text-xs mt-1">
+            Confira a variável <code className="bg-amber-100 px-1 rounded">DATABASE_URL</code> (começa com{" "}
+            <code className="bg-amber-100 px-1 rounded">postgresql://</code>), ambiente Production, e faça{" "}
+            <strong>Redeploy</strong>. No Neon, prefira connection <strong>Direct</strong> (sem -pooler) +{" "}
+            <code className="bg-amber-100 px-1 rounded">?sslmode=require</code>.
+          </p>
+        </div>
+      )}
+
+      {dbOk && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+          Banco conectado — dados prontos para uso.
         </div>
       )}
 
@@ -190,19 +212,16 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-            {[
-              "Treinamentos e DDS",
-              "Carteirinha do colaborador",
-              "Controle de EPI",
-              "Ordem de serviço",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-slate-600"
-              >
-                {item}
-              </div>
-            ))}
+            {["Treinamentos e DDS", "Carteirinha do colaborador", "Controle de EPI", "Ordem de serviço"].map(
+              (item) => (
+                <div
+                  key={item}
+                  className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-slate-600"
+                >
+                  {item}
+                </div>
+              )
+            )}
           </div>
         </CardContent>
       </Card>
