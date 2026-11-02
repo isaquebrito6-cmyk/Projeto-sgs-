@@ -100,6 +100,10 @@ model Empresa {
   solicitacoesExame    SolicitacaoExame[]
   treinamentos         Treinamento[]
   materiaisTreinamento MaterialTreinamento[]
+  cats                 CAT[]
+  permissoesTrabalho   PermissaoTrabalho[]
+  pets                 PET[]
+  ppps                 PPP[]
 }
 
 model Clinica {
@@ -135,9 +139,9 @@ model Medico {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user     User?   @relation(fields: [userId], references: [id])
-  userId   String? @unique
-  clinica  Clinica @relation(fields: [clinicaId], references: [id])
+  user      User?   @relation(fields: [userId], references: [id])
+  userId    String? @unique
+  clinica   Clinica @relation(fields: [clinicaId], references: [id])
   clinicaId String
 
   pcmsoCoordenados PCMSO[] @relation("MedicoCoordenador")
@@ -145,13 +149,13 @@ model Medico {
 }
 
 model Setor {
-  id          String   @id @default(cuid())
-  nome        String
-  descricao   String?
-  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   funcoes       Funcao[]
   ghes          GHE[]
@@ -182,7 +186,6 @@ model Colaborador {
   telefone       String?
   dataAdmissao   DateTime?
   dataDemissao   DateTime?
-  /// Foto 3x4 comprimida (data URL) para carteirinha / identificação
   fotoUrl        String?   @db.Text
   ativo          Boolean   @default(true)
   createdAt      DateTime  @default(now())
@@ -198,6 +201,10 @@ model Colaborador {
   solicitacoesExame        SolicitacaoExame[]
   asos                     ASO[]
   treinamentosParticipante TreinamentoParticipante[]
+  cats                     CAT[]
+  permissoesTrabalho       PermissaoTrabalho[]
+  pets                     PET[]
+  ppps                     PPP[]
 
   @@unique([empresaId, cpf])
 }
@@ -494,4 +501,153 @@ model MaterialTreinamento {
   empresaId String
 
   @@unique([empresaId, catalogoId])
+}
+
+// ==================== CAT / PT / PET / PPP ====================
+
+enum TipoCAT {
+  INICIAL
+  REABERTURA
+  COMUNICACAO_OBITO
+}
+
+enum StatusOperacional {
+  RASCUNHO
+  EMITIDO
+  ENCERRADO
+  CANCELADO
+}
+
+/// Comunicação de Acidente de Trabalho (INSS / eSocial)
+model CAT {
+  id                String           @id @default(cuid())
+  tipo              TipoCAT          @default(INICIAL)
+  status            StatusOperacional @default(RASCUNHO)
+  numeroCat         String?
+  dataAcidente      DateTime
+  horaAcidente      String?
+  localAcidente     String?
+  descricao         String
+  parteCorpoAtingida String?
+  agenteCausador    String?
+  houveAfastamento  Boolean          @default(false)
+  dataObito         DateTime?
+  testemunhas       String?
+  observacoes       String?
+  emitidoPor        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  colaboradorId String
+}
+
+enum TipoPermissao {
+  PT_GERAL
+  PT_ALTURA
+  PT_QUENTE
+  PT_ELETRICA
+  PT_OUTRA
+}
+
+/// Permissão de Trabalho (PT)
+model PermissaoTrabalho {
+  id              String           @id @default(cuid())
+  numero          String?
+  tipo            TipoPermissao    @default(PT_GERAL)
+  status          StatusOperacional @default(RASCUNHO)
+  local           String
+  atividade       String
+  dataInicio      DateTime
+  dataFim         DateTime?
+  riscos          String?
+  epiNecessario   String?
+  medidasControle String?
+  observacoes     String?
+  autorizadoPor   String?
+  executanteNome  String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  empresa       Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  colaborador   Colaborador? @relation(fields: [colaboradorId], references: [id])
+  colaboradorId String?
+}
+
+/// Permissão de Entrada e Trabalho — espaço confinado (NR-33)
+model PET {
+  id                    String            @id @default(cuid())
+  numero                String?
+  status                StatusOperacional @default(RASCUNHO)
+  identificacaoEspaco   String
+  local                 String
+  atividade             String
+  dataEntrada           DateTime
+  dataSaidaPrevista     DateTime?
+  dataEncerramento      DateTime?
+  atmosfera             String?
+  oxigenioPercentual    String?
+  gasesMedidos          String?
+  ventilacao            String?
+  epiEpc                String?
+  riscosAdicionais      String?
+  procedimentosEntrada  String?
+  procedimentosEmergencia String?
+  supervisorNome        String?
+  vigiaNome             String?
+  trabalhadoresNomes    String?
+  observacoes           String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  empresa       Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  colaborador   Colaborador? @relation(fields: [colaboradorId], references: [id])
+  colaboradorId String?
+}
+
+/// Perfil Profissiográfico Previdenciário (base para emissão / arquivo)
+model PPP {
+  id                 String   @id @default(cuid())
+  status             StatusOperacional @default(RASCUNHO)
+  nit                String?
+  ctpsNumero         String?
+  ctpsSerie          String?
+  dataAdmissao       DateTime?
+  dataDemissao       DateTime?
+  lotacao            String?
+  descricaoAtividades String? @db.Text
+  fatoresRisco       String?  @db.Text
+  profissionalResponsavel String?
+  registroProfissional    String?
+  observacoes        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  colaboradorId String
+
+  periodos PPPPeriodo[]
+}
+
+model PPPPeriodo {
+  id              String    @id @default(cuid())
+  dataInicio      DateTime
+  dataFim         DateTime?
+  cargoFuncao     String?
+  setor           String?
+  fatoresRisco    String?
+  intensidade     String?
+  tecnicaUtilizada String?
+  epcEficaz       Boolean?
+  epiEficaz       Boolean?
+  observacoes     String?
+
+  ppp   PPP    @relation(fields: [pppId], references: [id], onDelete: Cascade)
+  pppId String
 }
