@@ -103,27 +103,28 @@ model Empresa {
   pgrs               PGR[]
   pcmso              PCMSO[]
   solicitacoesExame  SolicitacaoExame[]
+  treinamentos       Treinamento[]
 }
 
 model Clinica {
-  id          String   @id @default(cuid())
-  razaoSocial String
+  id           String   @id @default(cuid())
+  razaoSocial  String
   nomeFantasia String?
-  cnpj        String   @unique
-  endereco    String?
-  cidade      String?
-  uf          String?
-  cep         String?
-  telefone    String?
-  email       String?
-  ativo       Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  cnpj         String   @unique
+  endereco     String?
+  cidade       String?
+  uf           String?
+  cep          String?
+  telefone     String?
+  email        String?
+  ativo        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  users              User[]
-  medicos            Medico[]
-  solicitacoesExame  SolicitacaoExame[]
-  asos               ASO[]
+  users             User[]
+  medicos           Medico[]
+  solicitacoesExame SolicitacaoExame[]
+  asos              ASO[]
 }
 
 model Medico {
@@ -138,25 +139,25 @@ model Medico {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user              User?    @relation(fields: [userId], references: [id])
-  userId            String?  @unique
-  clinica           Clinica  @relation(fields: [clinicaId], references: [id])
+  user              User?   @relation(fields: [userId], references: [id])
+  userId            String? @unique
+  clinica           Clinica @relation(fields: [clinicaId], references: [id])
   clinicaId         String
 
-  pcmsoCoordenados  PCMSO[]  @relation("MedicoCoordenador")
-  asosEmitidos      ASO[]
+  pcmsoCoordenados PCMSO[] @relation("MedicoCoordenador")
+  asosEmitidos     ASO[]
 }
 
 // ==================== COLABORADORES E ESTRUTURA ====================
 
 model Setor {
-  id          String   @id @default(cuid())
-  nome        String
-  descricao   String?
-  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   funcoes       Funcao[]
   ghes          GHE[]
@@ -191,15 +192,16 @@ model Colaborador {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId String
-  setor     Setor?   @relation(fields: [setorId], references: [id])
+  setor     Setor?  @relation(fields: [setorId], references: [id])
   setorId   String?
-  funcao    Funcao?  @relation(fields: [funcaoId], references: [id])
+  funcao    Funcao? @relation(fields: [funcaoId], references: [id])
   funcaoId  String?
 
-  solicitacoesExame SolicitacaoExame[]
-  asos              ASO[]
+  solicitacoesExame        SolicitacaoExame[]
+  asos                     ASO[]
+  treinamentosParticipante TreinamentoParticipante[]
 
   @@unique([empresaId, cpf])
 }
@@ -223,14 +225,14 @@ enum NivelRisco {
 }
 
 model Risco {
-  id               String     @id @default(cuid())
+  id               String    @id @default(cuid())
   nome             String
   tipo             TipoRisco
   descricao        String?
   fonteGeradora    String?
   possiveisAgravos String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   funcoes         RiscoFuncao[]
   ghes            RiscoGHE[]
@@ -287,19 +289,19 @@ enum StatusDocumento {
 }
 
 model PGR {
-  id                     String          @id @default(cuid())
-  titulo                 String
-  versao                 String          @default("1.0")
-  dataElaboracao         DateTime        @default(now())
-  dataRevisao            DateTime?
-  status                 StatusDocumento @default(RASCUNHO)
-  elaboradorNome         String?
-  elaboradorRegistro     String?
-  observacoes            String?
+  id                      String          @id @default(cuid())
+  titulo                  String
+  versao                  String          @default("1.0")
+  dataElaboracao          DateTime        @default(now())
+  dataRevisao             DateTime?
+  status                  StatusDocumento @default(RASCUNHO)
+  elaboradorNome          String?
+  elaboradorRegistro      String?
+  observacoes             String?
   caracterizacaoProcessos String?
-  metodologiaAvaliacao   String?
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  metodologiaAvaliacao    String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
   empresa         Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId       String
@@ -349,18 +351,18 @@ model PlanoAcaoItem {
 // ==================== PCMSO ====================
 
 model PCMSO {
-  id                  String          @id @default(cuid())
-  titulo              String
-  versao              String          @default("1.0")
-  dataElaboracao      DateTime        @default(now())
-  dataRevisao         DateTime?
-  status              StatusDocumento @default(RASCUNHO)
-  objetivos           String?
-  diretrizes          String?
-  responsavelNome     String?
-  responsavelCrm      String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  titulo          String
+  versao          String          @default("1.0")
+  dataElaboracao  DateTime        @default(now())
+  dataRevisao     DateTime?
+  status          StatusDocumento @default(RASCUNHO)
+  objetivos       String?
+  diretrizes      String?
+  responsavelNome String?
+  responsavelCrm  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   empresa             Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId           String
@@ -420,29 +422,29 @@ model SolicitacaoExame {
 }
 
 model ASO {
-  id                   String    @id @default(cuid())
-  numero               String?
-  dataEmissao          DateTime  @default(now())
-  dataExame            DateTime?
-  razaoSocialEmpresa   String
-  cnpjEmpresa          String
-  nomeColaborador      String
-  cpfColaborador       String
-  funcaoColaborador    String?
-  riscosOcupacionais   String?
-  examesRealizados     String?
-  conclusao            String
-  restricoes           String?
-  medicoNome           String?
-  medicoCrm            String?
-  medicoCrmUf          String?
-  medicoCoordNome      String?
-  medicoCoordCrm       String?
-  arquivoUrl           String?
-  observacoes          String?
+  id                    String    @id @default(cuid())
+  numero                String?
+  dataEmissao           DateTime  @default(now())
+  dataExame             DateTime?
+  razaoSocialEmpresa    String
+  cnpjEmpresa           String
+  nomeColaborador       String
+  cpfColaborador        String
+  funcaoColaborador     String?
+  riscosOcupacionais    String?
+  examesRealizados      String?
+  conclusao             String
+  restricoes            String?
+  medicoNome            String?
+  medicoCrm             String?
+  medicoCrmUf           String?
+  medicoCoordNome       String?
+  medicoCoordCrm        String?
+  arquivoUrl            String?
+  observacoes           String?
   checklistPsicossocial String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   solicitacao   SolicitacaoExame @relation(fields: [solicitacaoId], references: [id])
   solicitacaoId String           @unique
@@ -452,4 +454,40 @@ model ASO {
   clinicaId     String
   medico        Medico?          @relation(fields: [medicoId], references: [id])
   medicoId      String?
+}
+
+// ==================== TREINAMENTOS / DDS ====================
+
+model Treinamento {
+  id             String    @id @default(cuid())
+  titulo         String
+  tipo           String    // NR-06, NR-10, DDS, Integração, etc.
+  cargaHoraria   Int?
+  dataRealizacao DateTime?
+  validade       DateTime?
+  instrutor      String?
+  local          String?
+  conteudo       String?
+  observacoes    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  empresa       Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  participantes TreinamentoParticipante[]
+}
+
+model TreinamentoParticipante {
+  id            String   @id @default(cuid())
+  presente      Boolean  @default(true)
+  nota          String?
+  certificado   String?
+  createdAt     DateTime @default(now())
+
+  treinamento   Treinamento @relation(fields: [treinamentoId], references: [id], onDelete: Cascade)
+  treinamentoId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  colaboradorId String
+
+  @@unique([treinamentoId, colaboradorId])
 }
