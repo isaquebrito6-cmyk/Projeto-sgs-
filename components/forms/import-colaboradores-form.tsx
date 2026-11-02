@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  importColaboradores,
-  parseImportRows,
-} from "@/app/actions/import-colaboradores";
+import { importColaboradores } from "@/app/actions/import-colaboradores";
+import { parseImportRows } from "@/lib/import-colaboradores";
 import { textoOcrParaCsv } from "@/lib/ocr-colaboradores";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -149,7 +147,6 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
     }
   }
 
-  // Colar imagem com Ctrl+V na aba foto
   useEffect(() => {
     if (tab !== "foto") return;
     function onPaste(e: ClipboardEvent) {
@@ -265,8 +262,8 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
           {tab === "foto" && (
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                Foto ou scan da lista de colaboradores (ou da empresa). O sistema lê o texto (OCR) e
-                tenta preencher Nome, CPF, setor e função. Depois revise e importe.
+                Foto ou scan da lista. O sistema lê o texto (OCR) e tenta preencher Nome, CPF, setor e
+                função. Depois revise e importe.
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
@@ -331,20 +328,12 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
                   className="max-h-48 rounded-md border object-contain bg-slate-50"
                 />
               )}
-
-              <p className="text-xs text-slate-500">
-                Também funciona com <strong>Ctrl+V</strong> / colar foto nesta aba. Prefira lista
-                impressa nítida.
-              </p>
             </div>
           )}
 
           {(tab === "colar" || texto.trim().length > 0) && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Lista (editar / revisar) *</label>
-              <p className="text-xs text-slate-500">
-                Cole do Excel ou revise o texto do OCR. Colunas: Nome;CPF;Setor;Função
-              </p>
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -358,7 +347,7 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
           {preview && preview.rows.length > 0 && (
             <div className="rounded-md border bg-slate-50 p-3 text-xs text-slate-600">
               <p className="font-medium text-slate-800 mb-1">
-                Pré-visualização: {preview.rows.length} linha(s) — confira antes de importar
+                Pré-visualização: {preview.rows.length} linha(s)
               </p>
               {preview.avisos.map((a) => (
                 <p key={a} className="text-amber-700">

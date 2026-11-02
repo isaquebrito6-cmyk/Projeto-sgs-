@@ -18,7 +18,6 @@ function isStandalone() {
   if (typeof window === "undefined") return false;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    // iOS Safari
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   );
 }
@@ -68,10 +67,9 @@ export function InstallAppButton({
       setIosHint(true);
       return;
     }
-    // Desktop sem evento ainda — orienta o menu do navegador
     setIosHint(false);
     alert(
-      "Para instalar: no menu do navegador, escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.
+      'Para instalar: no menu do navegador, escolha "Instalar aplicativo" ou "Adicionar a tela inicial".'
     );
   }
 
