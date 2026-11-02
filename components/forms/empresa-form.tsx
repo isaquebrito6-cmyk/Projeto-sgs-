@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEmpresa, updateEmpresa, type EmpresaFormData } from "@/app/actions/empresas";
 import { actionBuscarCEP, actionBuscarCNPJ } from "@/app/actions/brasil";
-import { formatCNPJMask, formatCEP } from "@/lib/brasil";
+import { formatCNPJMask, formatCEP, onlyDigits } from "@/lib/brasil";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2, Search } from "lucide-react";
@@ -39,6 +39,8 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
   const [info, setInfo] = useState("");
   const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const lastCnpj = useRef("");
+  const lastCep = useRef("");
 
   const [form, setForm] = useState<EmpresaFormData>({
     razaoSocial: empresa?.razaoSocial ?? "",
@@ -60,12 +62,13 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleCNPJBlur() {
-    const digits = form.cnpj.replace(/\D/g, "");
+  async function consultarCNPJ(raw?: string) {
+    const digits = onlyDigits(raw ?? form.cnpj);
     if (digits.length !== 14) return;
+    if (digits === lastCnpj.current && form.razaoSocial) return;
 
     setLoadingCnpj(true);
-    setInfo("");
+    setInfo("Consultando CNPJ nas fontes públicas...");
     setError("");
     try {
       const result = await actionBuscarCNPJ(digits);
@@ -73,6 +76,7 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
         setInfo(result.error);
         return;
       }
+      lastCnpj.current = digits;
       setForm((prev) => ({
         ...prev,
         cnpj: result.cnpj,
@@ -88,25 +92,27 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
         email: result.email || prev.email,
       }));
       setInfo(
-        `CNPJ encontrado${result.situacao ? ` (${result.situacao})` : ""}${result.cnaeDescricao ? ` · ${result.cnaeDescricao}` : ""}${result.grauRisco ? ` · Grau de risco estimado: ${result.grauRisco}` : ""}`
+        `CNPJ encontrado${result.fonte ? ` via ${result.fonte}` : ""}${result.situacao ? ` (${result.situacao})` : ""}${result.cnaeDescricao ? ` · ${result.cnaeDescricao}` : ""}${result.grauRisco ? ` · Grau de risco estimado: ${result.grauRisco}` : ""}`
       );
     } finally {
       setLoadingCnpj(false);
     }
   }
 
-  async function handleCEPBlur() {
-    const digits = form.cep?.replace(/\D/g, "") || "";
+  async function consultarCEP(raw?: string) {
+    const digits = onlyDigits(raw ?? form.cep ?? "");
     if (digits.length !== 8) return;
+    if (digits === lastCep.current && form.cidade) return;
 
     setLoadingCep(true);
-    setInfo("");
+    setInfo("Consultando CEP...");
     try {
       const result = await actionBuscarCEP(digits);
       if ("error" in result) {
         setInfo(result.error);
         return;
       }
+      lastCep.current = digits;
       setForm((prev) => ({
         ...prev,
         cep: result.cep,
@@ -116,9 +122,25 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
         cidade: result.localidade || prev.cidade,
         uf: result.uf || prev.uf,
       }));
-      setInfo("Endereço preenchido pelo CEP.");
+      setInfo(`Endereço preenchido pelo CEP${result.fonte ? ` (${result.fonte})` : ""}.`);
     } finally {
       setLoadingCep(false);
+    }
+  }
+
+  function onCnpjChange(value: string) {
+    const masked = formatCNPJMask(value);
+    update("cnpj", masked);
+    if (onlyDigits(masked).length === 14) {
+      void consultarCNPJ(masked);
+    }
+  }
+
+  function onCepChange(value: string) {
+    const masked = formatCEP(value);
+    update("cep", masked);
+    if (onlyDigits(masked).length === 8) {
+      void consultarCEP(masked);
     }
   }
 
@@ -175,8 +197,8 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
                 <input
                   required
                   value={form.cnpj}
-                  onChange={(e) => update("cnpj", formatCNPJMask(e.target.value))}
-                  onBlur={handleCNPJBlur}
+                  onChange={(e) => onCnpjChange(e.target.value)}
+                  onBlur={() => consultarCNPJ()}
                   placeholder="00.000.000/0000-00"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -184,39 +206,60 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
                   type="button"
                   variant="outline"
                   disabled={loadingCnpj}
-                  onClick={handleCNPJBlur}
+                  onClick={() => consultarCNPJ()}
                   className="shrink-0"
                 >
                   {loadingCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
-              <p className="text-xs text-slate-400">Digite o CNPJ e saia do campo (ou clique na lupa) para preencher automaticamente.</p>
+              <p className="text-xs text-slate-400">
+                Ao completar 14 dígitos, busca automática (BrasilAPI → ReceitaWS → OpenCNPJ → CNPJá).
+              </p>
             </div>
 
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Razão Social *</label>
-              <input required value={form.razaoSocial} onChange={(e) => update("razaoSocial", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                required
+                value={form.razaoSocial}
+                onChange={(e) => update("razaoSocial", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Nome Fantasia</label>
-              <input value={form.nomeFantasia} onChange={(e) => update("nomeFantasia", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.nomeFantasia}
+                onChange={(e) => update("nomeFantasia", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Inscrição Estadual</label>
-              <input value={form.inscricaoEstadual} onChange={(e) => update("inscricaoEstadual", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.inscricaoEstadual}
+                onChange={(e) => update("inscricaoEstadual", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">CNAE</label>
-              <input value={form.cnae} onChange={(e) => update("cnae", e.target.value)} placeholder="0000-0/00"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.cnae}
+                onChange={(e) => update("cnae", e.target.value)}
+                placeholder="0000-0/00"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Grau de Risco (NR-4)</label>
-              <select value={form.grauRisco ?? ""} onChange={(e) => update("grauRisco", e.target.value ? Number(e.target.value) : undefined)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select
+                value={form.grauRisco ?? ""}
+                onChange={(e) =>
+                  update("grauRisco", e.target.value ? Number(e.target.value) : undefined)
+                }
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
                 <option value="">Selecione</option>
                 <option value="1">Grau 1</option>
                 <option value="2">Grau 2</option>
@@ -226,8 +269,15 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Nº de Funcionários</label>
-              <input type="number" min={0} value={form.numeroFuncionarios ?? ""} onChange={(e) => update("numeroFuncionarios", e.target.value ? Number(e.target.value) : undefined)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                type="number"
+                min={0}
+                value={form.numeroFuncionarios ?? ""}
+                onChange={(e) =>
+                  update("numeroFuncionarios", e.target.value ? Number(e.target.value) : undefined)
+                }
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
 
             <div className="space-y-2">
@@ -235,46 +285,74 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
               <div className="flex gap-2">
                 <input
                   value={form.cep}
-                  onChange={(e) => update("cep", formatCEP(e.target.value))}
-                  onBlur={handleCEPBlur}
+                  onChange={(e) => onCepChange(e.target.value)}
+                  onBlur={() => consultarCEP()}
                   placeholder="00000-000"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
-                <Button type="button" variant="outline" disabled={loadingCep} onClick={handleCEPBlur} className="shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loadingCep}
+                  onClick={() => consultarCEP()}
+                  className="shrink-0"
+                >
                   {loadingCep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
+              <p className="text-xs text-slate-400">
+                Ao completar 8 dígitos: ViaCEP → BrasilAPI → OpenCEP → AwesomeAPI.
+              </p>
             </div>
 
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Endereço</label>
-              <input value={form.endereco} onChange={(e) => update("endereco", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.endereco}
+                onChange={(e) => update("endereco", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Cidade</label>
-              <input value={form.cidade} onChange={(e) => update("cidade", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.cidade}
+                onChange={(e) => update("cidade", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">UF</label>
-              <select value={form.uf ?? ""} onChange={(e) => update("uf", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select
+                value={form.uf ?? ""}
+                onChange={(e) => update("uf", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
                 <option value="">—</option>
                 {UFS.map((uf) => (
-                  <option key={uf} value={uf}>{uf}</option>
+                  <option key={uf} value={uf}>
+                    {uf}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Telefone</label>
-              <input value={form.telefone} onChange={(e) => update("telefone", e.target.value)} placeholder="(00) 00000-0000"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                value={form.telefone}
+                onChange={(e) => update("telefone", e.target.value)}
+                placeholder="(00) 00000-0000"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">E-mail</label>
-              <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
             </div>
           </div>
 
