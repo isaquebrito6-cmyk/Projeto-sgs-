@@ -1,14 +1,37 @@
 "use server";
 
-import { buscarCEP, buscarCNPJ, isValidCPF, onlyDigits, formatCPFMask } from "@/lib/brasil";
+import {
+  buscarCEP,
+  buscarCNPJ,
+  isValidCPF,
+  isValidCNPJ,
+  onlyDigits,
+  formatCPFMask,
+} from "@/lib/brasil";
 import { prisma } from "@/lib/prisma";
 
 export async function actionBuscarCEP(cep: string) {
-  return buscarCEP(cep);
+  try {
+    return await buscarCEP(cep);
+  } catch (e) {
+    console.error("[actionBuscarCEP]", e);
+    return { error: "Falha ao consultar CEP. Tente novamente." };
+  }
 }
 
 export async function actionBuscarCNPJ(cnpj: string) {
-  return buscarCNPJ(cnpj);
+  try {
+    const d = onlyDigits(cnpj);
+    if (d.length !== 14) return { error: "CNPJ deve ter 14 dígitos." };
+    if (!isValidCNPJ(d)) return { error: "CNPJ inválido (dígitos verificadores)." };
+    return await buscarCNPJ(d);
+  } catch (e) {
+    console.error("[actionBuscarCNPJ]", e);
+    return {
+      error:
+        "Falha ao consultar CNPJ no servidor. Aguarde alguns segundos e tente de novo, ou preencha os dados manualmente.",
+    };
+  }
 }
 
 export async function actionValidarCPF(cpf: string) {
@@ -31,19 +54,11 @@ export type CpfLookupResult = {
   message: string;
 };
 
-/**
- * Busca CPF:
- * 1) Valida dígitos
- * 2) Base interna SGS (preenche nome se já cadastrado)
- * 3) BrasilAPI — validação + região de emissão (não retorna nome)
- * 4) API externa opcional (CPF_API_URL + CPF_API_TOKEN) para nome
- */
 export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { error: string }> {
   const d = onlyDigits(cpf);
   if (d.length !== 11) return { error: "CPF deve ter 11 dígitos." };
   if (!isValidCPF(d)) return { error: "CPF inválido." };
 
-  // 1) Base interna
   try {
     const interno = await prisma.colaborador.findFirst({
       where: { cpf: d, ativo: true },
@@ -68,14 +83,13 @@ export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { 
     // banco indisponível
   }
 
-  // 2) BrasilAPI — validação + região (não tem nome/nascimento)
   let regiaoEmissao: string | undefined;
   let ufs: string[] | undefined;
   let brasilOk = false;
 
   try {
     const res = await fetch(`https://brasilapi.com.br/api/cpf/v1/${d}`, {
-      next: { revalidate: 86400 },
+      cache: "no-store",
     });
 
     if (res.ok) {
@@ -92,7 +106,6 @@ export async function actionBuscarCPF(cpf: string): Promise<CpfLookupResult | { 
     // segue
   }
 
-  // 3) API externa opcional com nome
   const apiUrl = process.env.CPF_API_URL;
   const apiToken = process.env.CPF_API_TOKEN;
 

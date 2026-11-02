@@ -1,4 +1,4 @@
-/** Consultas públicas BR: CEP e CNPJ com múltiplas fontes (fallback) */
+/** Consultas públicas BR: CEP e CNPJ com múltiplas fontes (fallback paralelo) */
 
 export function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
@@ -46,6 +46,26 @@ export function isValidCPF(cpf: string): boolean {
   return rev === parseInt(d[10], 10);
 }
 
+/** Validação dos dígitos verificadores do CNPJ */
+export function isValidCNPJ(cnpj: string): boolean {
+  const d = onlyDigits(cnpj);
+  if (d.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(d)) return false;
+
+  const calc = (base: string, factors: number[]) => {
+    let sum = 0;
+    for (let i = 0; i < factors.length; i++) sum += parseInt(base[i], 10) * factors[i];
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+
+  const f1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const f2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const d1 = calc(d, f1);
+  const d2 = calc(d, f2);
+  return d1 === parseInt(d[12], 10) && d2 === parseInt(d[13], 10);
+}
+
 /** Estimativa de Grau de Risco (NR-4) pela divisão do CNAE */
 export function grauRiscoPorCNAE(cnae: string): number | undefined {
   const d = onlyDigits(cnae);
@@ -74,18 +94,30 @@ export function grauRiscoPorCNAE(cnae: string): number | undefined {
   return 2;
 }
 
-async function fetchJson(url: string, timeoutMs = 6000): Promise<any | null> {
+async function fetchJson(url: string, timeoutMs = 10000): Promise<any | null> {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: { Accept: "application/json", "User-Agent": "SGS-SST/1.0" },
+      headers: {
+        Accept: "application/json",
+        // UA de navegador — alguns provedores bloqueiam bots/UA custom
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
       cache: "no-store",
-    });
+      next: { revalidate: 0 },
+    } as RequestInit);
     clearTimeout(timer);
     if (!res.ok) return null;
-    return await res.json();
+    const text = await res.text();
+    if (!text) return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
   } catch {
     return null;
   }
@@ -104,7 +136,6 @@ export type CepResult = {
 function normalizeCepResult(raw: any, fonte: string): CepResult | null {
   if (!raw || raw.erro === true) return null;
 
-  // ViaCEP / BrasilCEP
   if (raw.logradouro != null || raw.localidade != null) {
     return {
       cep: formatCEP(String(raw.cep || "")),
@@ -117,7 +148,6 @@ function normalizeCepResult(raw: any, fonte: string): CepResult | null {
     };
   }
 
-  // BrasilAPI v1/v2
   if (raw.street != null || raw.city != null) {
     return {
       cep: formatCEP(String(raw.cep || "")),
@@ -130,7 +160,6 @@ function normalizeCepResult(raw: any, fonte: string): CepResult | null {
     };
   }
 
-  // OpenCEP
   if (raw.address != null && (raw.city || raw.state)) {
     return {
       cep: formatCEP(String(raw.cep || "")),
@@ -143,7 +172,6 @@ function normalizeCepResult(raw: any, fonte: string): CepResult | null {
     };
   }
 
-  // AwesomeAPI
   if (raw.address_name != null || (raw.address && raw.city)) {
     return {
       cep: formatCEP(String(raw.cep || "")),
@@ -159,7 +187,7 @@ function normalizeCepResult(raw: any, fonte: string): CepResult | null {
   return null;
 }
 
-/** CEP: ViaCEP → BrasilAPI → OpenCEP → AwesomeAPI */
+/** CEP: várias fontes em sequência rápida */
 export async function buscarCEP(cep: string): Promise<CepResult | { error: string }> {
   const d = onlyDigits(cep);
   if (d.length !== 8) return { error: "CEP deve ter 8 dígitos." };
@@ -172,10 +200,18 @@ export async function buscarCEP(cep: string): Promise<CepResult | { error: strin
     { url: `https://cep.awesomeapi.com.br/json/${d}`, nome: "AwesomeAPI" },
   ];
 
-  for (const f of fontes) {
-    const data = await fetchJson(f.url);
-    const norm = normalizeCepResult(data, f.nome);
-    if (norm && (norm.localidade || norm.logradouro)) return norm;
+  // paralelo — primeira resposta válida
+  const settled = await Promise.allSettled(
+    fontes.map(async (f) => {
+      const data = await fetchJson(f.url, 8000);
+      const norm = normalizeCepResult(data, f.nome);
+      if (norm && (norm.localidade || norm.logradouro)) return norm;
+      throw new Error("empty");
+    })
+  );
+
+  for (const s of settled) {
+    if (s.status === "fulfilled") return s.value;
   }
 
   return { error: "CEP não encontrado em nenhuma fonte pública." };
@@ -212,15 +248,17 @@ function buildEndereco(parts: {
   return `${rua}${num}${comp}${bairro}`.trim();
 }
 
-function fromBrasilApi(data: any, d: string): CnpjResult | null {
-  if (!data || (!data.razao_social && !data.nome_fantasia)) return null;
-  const cnaeCode = data.cnae_fiscal ? String(data.cnae_fiscal) : "";
+function fromBrasilApiLike(data: any, d: string, fonte: string): CnpjResult | null {
+  if (!data || (!data.razao_social && !data.nome_fantasia && !data.nome)) return null;
+  const cnaeCode = data.cnae_fiscal
+    ? String(data.cnae_fiscal)
+    : onlyDigits(String(data.atividade_principal?.[0]?.code || ""));
   return {
     cnpj: formatCNPJMask(d),
-    razaoSocial: data.razao_social || data.nome_fantasia || "",
-    nomeFantasia: data.nome_fantasia || "",
+    razaoSocial: data.razao_social || data.nome || data.nome_fantasia || "",
+    nomeFantasia: data.nome_fantasia || data.fantasia || "",
     cnae: cnaeCode,
-    cnaeDescricao: data.cnae_fiscal_descricao || "",
+    cnaeDescricao: data.cnae_fiscal_descricao || data.atividade_principal?.[0]?.text || "",
     grauRisco: grauRiscoPorCNAE(cnaeCode),
     endereco: buildEndereco({
       tipo: data.descricao_tipo_de_logradouro,
@@ -232,10 +270,14 @@ function fromBrasilApi(data: any, d: string): CnpjResult | null {
     cidade: data.municipio || "",
     uf: data.uf || "",
     cep: data.cep ? formatCEP(String(data.cep)) : "",
-    telefone: data.ddd_telefone_1 ? String(data.ddd_telefone_1) : "",
+    telefone: data.ddd_telefone_1
+      ? String(data.ddd_telefone_1)
+      : data.telefone
+        ? String(data.telefone)
+        : "",
     email: data.email || "",
-    situacao: data.descricao_situacao_cadastral || "",
-    fonte: "BrasilAPI",
+    situacao: data.descricao_situacao_cadastral || data.situacao || "",
+    fonte,
   };
 }
 
@@ -269,7 +311,14 @@ function fromOpenCnpj(data: any, d: string): CnpjResult | null {
   const body = data?.data || data;
   if (!body || (!body.razaoSocial && !body.razao_social && !body.nome)) return null;
   const cnaeCode = onlyDigits(
-    String(body.cnaePrincipal || body.cnae || body.cnae_fiscal || body.atividadePrincipal?.codigo || "")
+    String(
+      body.cnaePrincipal ||
+        body.cnae ||
+        body.cnae_fiscal ||
+        body.atividadePrincipal?.codigo ||
+        body.atividade_principal?.[0]?.code ||
+        ""
+    )
   );
   return {
     cnpj: formatCNPJMask(d),
@@ -295,12 +344,12 @@ function fromOpenCnpj(data: any, d: string): CnpjResult | null {
 }
 
 function fromCnpja(data: any, d: string): CnpjResult | null {
-  if (!data || (!data.company?.name && !data.alias)) return null;
+  if (!data || (!data.company?.name && !data.alias && !data.taxId)) return null;
   const cnaeCode = onlyDigits(String(data.mainActivity?.id || ""));
   const addr = data.address || {};
   return {
     cnpj: formatCNPJMask(d),
-    razaoSocial: data.company?.name || "",
+    razaoSocial: data.company?.name || data.alias || "",
     nomeFantasia: data.alias || "",
     cnae: cnaeCode,
     cnaeDescricao: data.mainActivity?.text || "",
@@ -314,48 +363,77 @@ function fromCnpja(data: any, d: string): CnpjResult | null {
     cidade: addr.city || "",
     uf: addr.state || "",
     cep: addr.zip ? formatCEP(String(addr.zip)) : "",
-    telefone: data.phones?.[0] ? `${data.phones[0].area}${data.phones[0].number}` : "",
+    telefone: data.phones?.[0] ? `${data.phones[0].area || ""}${data.phones[0].number || ""}` : "",
     email: data.emails?.[0]?.address || "",
     situacao: data.status?.text || "",
     fonte: "CNPJá",
   };
 }
 
-/** CNPJ: BrasilAPI → ReceitaWS → OpenCNPJ → CNPJá open */
+function fromPublicaCnpj(data: any, d: string): CnpjResult | null {
+  if (!data || (!data.razao_social && !data.estabelecimento)) return null;
+  const est = data.estabelecimento || {};
+  const ativ = est.atividade_principal || {};
+  const cnaeCode = onlyDigits(String(ativ.subclasse || ativ.id || ""));
+  return {
+    cnpj: formatCNPJMask(d),
+    razaoSocial: data.razao_social || "",
+    nomeFantasia: est.nome_fantasia || "",
+    cnae: cnaeCode,
+    cnaeDescricao: ativ.descricao || "",
+    grauRisco: grauRiscoPorCNAE(cnaeCode),
+    endereco: buildEndereco({
+      tipo: est.tipo_logradouro,
+      logradouro: est.logradouro,
+      numero: est.numero,
+      complemento: est.complemento,
+      bairro: est.bairro,
+    }),
+    cidade: est.cidade?.nome || est.municipio || "",
+    uf: est.estado?.sigla || est.uf || "",
+    cep: est.cep ? formatCEP(String(est.cep)) : "",
+    telefone: est.ddd1 && est.telefone1 ? `${est.ddd1}${est.telefone1}` : "",
+    email: est.email || "",
+    situacao: est.situacao_cadastral || "",
+    fonte: "Pública CNPJ",
+  };
+}
+
+/**
+ * CNPJ — consulta em paralelo nas fontes públicas gratuitas.
+ * A primeira resposta válida é usada (mais rápido e resiliente no Vercel).
+ */
 export async function buscarCNPJ(cnpj: string): Promise<CnpjResult | { error: string }> {
   const d = onlyDigits(cnpj);
   if (d.length !== 14) return { error: "CNPJ deve ter 14 dígitos." };
+  if (!isValidCNPJ(d)) return { error: "CNPJ inválido (dígitos verificadores)." };
 
-  // 1) BrasilAPI
-  {
-    const data = await fetchJson(`https://brasilapi.com.br/api/cnpj/v1/${d}`);
-    const r = fromBrasilApi(data, d);
-    if (r?.razaoSocial) return r;
-  }
+  const jobs: Promise<CnpjResult | null>[] = [
+    fetchJson(`https://brasilapi.com.br/api/cnpj/v1/${d}`, 12000).then((data) =>
+      fromBrasilApiLike(data, d, "BrasilAPI")
+    ),
+    // MinhaReceita usa o mesmo formato da BrasilAPI
+    fetchJson(`https://minhareceita.org/${d}`, 12000).then((data) =>
+      fromBrasilApiLike(data, d, "MinhaReceita")
+    ),
+    fetchJson(`https://www.receitaws.com.br/v1/cnpj/${d}`, 12000).then((data) =>
+      fromReceitaWs(data, d)
+    ),
+    fetchJson(`https://kitana.opencnpj.com/cnpj/${d}`, 12000).then((data) => fromOpenCnpj(data, d)),
+    fetchJson(`https://open.cnpja.com/office/${d}`, 12000).then((data) => fromCnpja(data, d)),
+    fetchJson(`https://publica.cnpj.ws/cnpj/${d}`, 12000).then((data) => fromPublicaCnpj(data, d)),
+  ];
 
-  // 2) ReceitaWS (3 req/min)
-  {
-    const data = await fetchJson(`https://www.receitaws.com.br/v1/cnpj/${d}`);
-    const r = fromReceitaWs(data, d);
-    if (r?.razaoSocial) return r;
-  }
+  const settled = await Promise.allSettled(jobs);
 
-  // 3) OpenCNPJ
-  {
-    const data = await fetchJson(`https://kitana.opencnpj.com/cnpj/${d}`);
-    const r = fromOpenCnpj(data, d);
-    if (r?.razaoSocial) return r;
-  }
-
-  // 4) CNPJá API pública
-  {
-    const data = await fetchJson(`https://open.cnpja.com/office/${d}`);
-    const r = fromCnpja(data, d);
-    if (r?.razaoSocial) return r;
+  for (const s of settled) {
+    if (s.status === "fulfilled" && s.value?.razaoSocial) {
+      return s.value;
+    }
   }
 
   return {
     error:
-      "CNPJ não encontrado nas fontes públicas (BrasilAPI, ReceitaWS, OpenCNPJ, CNPJá). Verifique o número ou preencha manualmente.",
+      "Não foi possível consultar o CNPJ agora (fontes públicas indisponíveis ou limite de uso). Verifique o número e tente de novo em alguns segundos, ou preencha manualmente.",
   };
 }

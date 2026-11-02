@@ -64,7 +64,10 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
 
   async function consultarCNPJ(raw?: string) {
     const digits = onlyDigits(raw ?? form.cnpj);
-    if (digits.length !== 14) return;
+    if (digits.length !== 14) {
+      setInfo("Informe os 14 dígitos do CNPJ.");
+      return;
+    }
     if (digits === lastCnpj.current && form.razaoSocial) return;
 
     setLoadingCnpj(true);
@@ -72,14 +75,18 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
     setError("");
     try {
       const result = await actionBuscarCNPJ(digits);
+      if (!result || typeof result !== "object") {
+        setInfo("Resposta inválida do servidor. Tente novamente.");
+        return;
+      }
       if ("error" in result) {
-        setInfo(result.error);
+        setInfo(String(result.error));
         return;
       }
       lastCnpj.current = digits;
       setForm((prev) => ({
         ...prev,
-        cnpj: result.cnpj,
+        cnpj: result.cnpj || formatCNPJMask(digits),
         razaoSocial: result.razaoSocial || prev.razaoSocial,
         nomeFantasia: result.nomeFantasia || prev.nomeFantasia,
         cnae: result.cnae || prev.cnae,
@@ -93,6 +100,11 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
       }));
       setInfo(
         `CNPJ encontrado${result.fonte ? ` via ${result.fonte}` : ""}${result.situacao ? ` (${result.situacao})` : ""}${result.cnaeDescricao ? ` · ${result.cnaeDescricao}` : ""}${result.grauRisco ? ` · Grau de risco estimado: ${result.grauRisco}` : ""}`
+      );
+    } catch (err) {
+      console.error("[consultarCNPJ]", err);
+      setInfo(
+        "Falha na consulta do CNPJ (rede ou servidor). Aguarde e clique na lupa, ou preencha manualmente."
       );
     } finally {
       setLoadingCnpj(false);
@@ -123,6 +135,8 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
         uf: result.uf || prev.uf,
       }));
       setInfo(`Endereço preenchido pelo CEP${result.fonte ? ` (${result.fonte})` : ""}.`);
+    } catch {
+      setInfo("Falha ao consultar CEP. Tente novamente.");
     } finally {
       setLoadingCep(false);
     }
@@ -198,7 +212,9 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
                   required
                   value={form.cnpj}
                   onChange={(e) => onCnpjChange(e.target.value)}
-                  onBlur={() => consultarCNPJ()}
+                  onBlur={() => {
+                    if (onlyDigits(form.cnpj).length === 14) void consultarCNPJ();
+                  }}
                   placeholder="00.000.000/0000-00"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -206,14 +222,18 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
                   type="button"
                   variant="outline"
                   disabled={loadingCnpj}
-                  onClick={() => consultarCNPJ()}
+                  onClick={() => {
+                    lastCnpj.current = ""; // força nova consulta
+                    void consultarCNPJ();
+                  }}
                   className="shrink-0"
                 >
                   {loadingCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
               <p className="text-xs text-slate-400">
-                Ao completar 14 dígitos, busca automática (BrasilAPI → ReceitaWS → OpenCNPJ → CNPJá).
+                Ao completar 14 dígitos, busca automática em várias fontes (BrasilAPI, MinhaReceita,
+                ReceitaWS, OpenCNPJ…). Use a lupa para tentar de novo.
               </p>
             </div>
 
@@ -300,9 +320,6 @@ export function EmpresaForm({ empresa }: { empresa?: Empresa }) {
                   {loadingCep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
-              <p className="text-xs text-slate-400">
-                Ao completar 8 dígitos: ViaCEP → BrasilAPI → OpenCEP → AwesomeAPI.
-              </p>
             </div>
 
             <div className="sm:col-span-2 space-y-2">
