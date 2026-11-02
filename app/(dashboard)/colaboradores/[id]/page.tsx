@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil, User, Building2, Briefcase, Calendar } from "lucide-react";
+import { ArrowLeft, Pencil, User, Building2, Briefcase, Calendar, IdCard } from "lucide-react";
 import { getColaborador } from "@/app/actions/colaboradores";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCPF, formatDate } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 export default async function ColaboradorDetailPage({
   params,
@@ -25,17 +27,37 @@ export default async function ColaboradorDetailPage({
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{colab.nome}</h1>
-            <p className="text-slate-500 mt-1">CPF: {formatCPF(colab.cpf)}</p>
+          <div className="flex items-start gap-3">
+            <div className="w-16 h-20 rounded border bg-slate-100 overflow-hidden shrink-0">
+              {colab.fotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={colab.fotoUrl} alt={colab.nome} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400">
+                  Sem foto
+                </div>
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{colab.nome}</h1>
+              <p className="text-slate-500 mt-1">CPF: {formatCPF(colab.cpf)}</p>
+            </div>
           </div>
         </div>
-        <Link href={`/colaboradores/${id}/editar`}>
-          <Button variant="outline">
-            <Pencil className="w-4 h-4" />
-            Editar
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/colaboradores/${id}/carteirinha`}>
+            <Button variant="outline">
+              <IdCard className="w-4 h-4" />
+              Carteirinha
+            </Button>
+          </Link>
+          <Link href={`/colaboradores/${id}/editar`}>
+            <Button variant="outline">
+              <Pencil className="w-4 h-4" />
+              Editar
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -62,7 +84,11 @@ export default async function ColaboradorDetailPage({
               <div>
                 <dt className="text-slate-500">Sexo</dt>
                 <dd className="font-medium">
-                  {colab.sexo === "M" ? "Masculino" : colab.sexo === "F" ? "Feminino" : colab.sexo || "—"}
+                  {colab.sexo === "M"
+                    ? "Masculino"
+                    : colab.sexo === "F"
+                      ? "Feminino"
+                      : colab.sexo || "—"}
                 </dd>
               </div>
               <div>
@@ -120,7 +146,6 @@ export default async function ColaboradorDetailPage({
         </Card>
       </div>
 
-      {/* Histórico de ASOs */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Histórico de ASOs</CardTitle>
