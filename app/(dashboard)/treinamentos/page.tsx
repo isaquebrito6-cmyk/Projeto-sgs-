@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Plus, GraduationCap, FolderOpen } from "lucide-react";
+import { Plus, GraduationCap, FolderOpen, List } from "lucide-react";
 import { listTreinamentos } from "@/app/actions/treinamentos";
+import { CATALOGO_TREINAMENTOS } from "@/lib/nr-treinamentos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TreinamentosPage() {
   const itens = await listTreinamentos();
+  const totalCatalogo = CATALOGO_TREINAMENTOS.length;
 
   return (
     <div className="space-y-6">
@@ -20,6 +22,12 @@ export default async function TreinamentosPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/treinamentos/catalogo">
+            <Button variant="outline">
+              <List className="w-4 h-4" />
+              Catálogo NR ({totalCatalogo})
+            </Button>
+          </Link>
           <Link href="/treinamentos/materiais">
             <Button variant="outline">
               <FolderOpen className="w-4 h-4" />
@@ -35,6 +43,24 @@ export default async function TreinamentosPage() {
         </div>
       </div>
 
+      {/* Atalho da lista por NR */}
+      <Card className="border-sgs-200">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-slate-900">Lista de treinamentos por norma</p>
+            <p className="text-sm text-slate-500">
+              NR-01, NR-05, NR-06, NR-10, NR-11, NR-12, NR-18, NR-20, NR-33, NR-35, DDS e Brigada
+            </p>
+          </div>
+          <Link href="/treinamentos/catalogo">
+            <Button variant="outline" size="sm">
+              <List className="w-4 h-4" />
+              Ver catálogo completo
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
       {itens.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -43,14 +69,13 @@ export default async function TreinamentosPage() {
             </div>
             <h3 className="text-lg font-semibold text-slate-900">Nenhum treinamento registrado</h3>
             <p className="text-slate-500 mt-1 max-w-sm">
-              Cadastre DDS, NR-06, NR-10 e outros. Configure a pasta de materiais na nuvem para abrir
-              o conteúdo na hora do treinamento.
+              Escolha um item no catálogo de NRs ou registre um treinamento avulso.
             </p>
             <div className="flex flex-wrap gap-2 mt-6 justify-center">
-              <Link href="/treinamentos/materiais">
+              <Link href="/treinamentos/catalogo">
                 <Button variant="outline">
-                  <FolderOpen className="w-4 h-4" />
-                  Configurar pasta
+                  <List className="w-4 h-4" />
+                  Abrir catálogo
                 </Button>
               </Link>
               <Link href="/treinamentos/novo">
