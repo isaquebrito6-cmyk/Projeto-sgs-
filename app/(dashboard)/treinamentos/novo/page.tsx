@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-export default async function NovoTreinamentoPage() {
+export default async function NovoTreinamentoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ catalogo?: string }>;
+}) {
+  const sp = await searchParams;
   const [empresas, colaboradores] = await Promise.all([
     listEmpresas(),
     listColaboradores(),
@@ -23,7 +28,11 @@ export default async function NovoTreinamentoPage() {
           <Button variant="outline">Voltar</Button>
         </Link>
       </div>
-      <TreinamentoForm empresas={empresas} colaboradores={colaboradores} />
+      <TreinamentoForm
+        empresas={empresas}
+        colaboradores={colaboradores}
+        catalogoInicial={sp.catalogo}
+      />
     </div>
   );
 }

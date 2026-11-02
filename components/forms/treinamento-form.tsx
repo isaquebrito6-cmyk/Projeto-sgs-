@@ -25,30 +25,41 @@ type ColabOption = {
   empresaId: string;
 };
 
+function initialFromCatalogo(catalogoInicial?: string) {
+  const base =
+    (catalogoInicial && getCatalogoById(catalogoInicial)) ||
+    CATALOGO_TREINAMENTOS[0] ||
+    null;
+  return base;
+}
+
 export function TreinamentoForm({
   empresas,
   colaboradores,
+  catalogoInicial,
 }: {
   empresas: EmpresaOption[];
   colaboradores: ColabOption[];
+  catalogoInicial?: string;
 }) {
   const router = useRouter();
+  const initial = initialFromCatalogo(catalogoInicial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [catalogoId, setCatalogoId] = useState(CATALOGO_TREINAMENTOS[0]?.id || "dds");
+  const [catalogoId, setCatalogoId] = useState(initial?.id || "dds");
 
   const [form, setForm] = useState<TreinamentoFormData>({
-    titulo: CATALOGO_TREINAMENTOS[0]?.titulo || "",
-    tipo: CATALOGO_TREINAMENTOS[0]?.norma || "DDS",
+    titulo: initial?.titulo || "",
+    tipo: initial?.norma || "DDS",
     empresaId: empresas[0]?.id || "",
-    catalogoId: CATALOGO_TREINAMENTOS[0]?.id || "",
-    cargaHoraria: CATALOGO_TREINAMENTOS[0]?.cargaHorariaMin?.toString() || "",
+    catalogoId: initial?.id || "",
+    cargaHoraria: initial?.cargaHorariaMin?.toString() || "",
     dataRealizacao: "",
     validade: "",
     instrutor: "",
     local: "",
-    conteudo: CATALOGO_TREINAMENTOS[0]?.conteudoProgramatico || "",
-    observacoes: CATALOGO_TREINAMENTOS[0]?.observacao || "",
+    conteudo: initial?.conteudoProgramatico || "",
+    observacoes: initial?.observacao || "",
     materialUrl: "",
     colaboradorIds: [],
   });
@@ -60,6 +71,16 @@ export function TreinamentoForm({
     () => colaboradores.filter((c) => c.empresaId === form.empresaId),
     [colaboradores, form.empresaId]
   );
+
+  // Agrupa opções do select por norma para ficar legível
+  const opcoesPorNorma = useMemo(() => {
+    const map = new Map<string, typeof CATALOGO_TREINAMENTOS>();
+    for (const c of CATALOGO_TREINAMENTOS) {
+      if (!map.has(c.norma)) map.set(c.norma, []);
+      map.get(c.norma)!.push(c);
+    }
+    return Array.from(map.entries());
+  }, []);
 
   function applyCatalogo(id: string) {
     const c = getCatalogoById(id);
@@ -151,10 +172,14 @@ export function TreinamentoForm({
               onChange={(e) => applyCatalogo(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              {CATALOGO_TREINAMENTOS.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.norma} — {c.titulo}
-                </option>
+              {opcoesPorNorma.map(([norma, itens]) => (
+                <optgroup key={norma} label={norma}>
+                  {itens.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.titulo}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             {cat && (
