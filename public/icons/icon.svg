@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SGS">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f241c"/>
+      <stop offset="55%" stop-color="#1e3a2f"/>
+      <stop offset="100%" stop-color="#0a1812"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2a9d6a"/>
+      <stop offset="100%" stop-color="#1a6b48"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#f5c518" stroke-width="6" opacity="0.35"/>
+  <!-- Escudo -->
+  <path d="M156 90 h200 c12 0 20 8 20 20 v180 c0 70-70 120-120 150 c-50-30-120-80-120-150 V110 c0-12 8-20 20-20z" fill="url(#shield)" stroke="#f5c518" stroke-width="12"/>
+  <!-- Capacete -->
+  <path d="M200 150 h112 a56 40 0 0 1 0 56 h-16 v8 h-80 v-8 h-16 a56 40 0 0 1 0-56z" fill="#f5c518" stroke="#1a1714" stroke-width="6"/>
+  <rect x="186" y="198" width="140" height="18" rx="4" fill="#e8b40a" stroke="#1a1714" stroke-width="4"/>
+  <!-- SGS -->
+  <text x="256" y="300" text-anchor="middle" font-family="Arial Black, Helvetica, sans-serif" font-size="72" font-weight="800" fill="#ffffff">SGS</text>
+</svg>

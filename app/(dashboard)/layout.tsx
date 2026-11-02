@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { InstallAppButton } from "@/components/install-app-button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -50,10 +51,10 @@ export default function DashboardLayout({
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-sgs-700 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sgs-700 to-sgs-900 flex items-center justify-center ring-2 ring-amber-400/80 shadow-sm">
+            <Shield className="w-4 h-4 text-amber-300" />
           </div>
-          <span className="font-bold text-sgs-900">SGS</span>
+          <span className="font-bold text-sgs-900 tracking-tight">SGS</span>
         </div>
       </header>
 
@@ -72,10 +73,13 @@ export default function DashboardLayout({
       >
         <div className="flex h-14 items-center justify-between px-4 border-b lg:h-16">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-sgs-700 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-sgs-900 flex items-center justify-center ring-2 ring-amber-400 shadow-md">
+              <Shield className="w-4.5 h-4.5 text-amber-300" />
             </div>
-            <span className="font-bold text-lg text-sgs-900">SGS</span>
+            <div className="leading-tight">
+              <span className="font-extrabold text-lg text-sgs-900 tracking-tight">SGS</span>
+              <p className="text-[10px] text-slate-400 font-medium">Segurança do Trabalho</p>
+            </div>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -110,9 +114,8 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t space-y-2">
-          <p className="px-3 text-[10px] uppercase tracking-wide text-slate-400">Em breve</p>
-          <p className="px-3 text-xs text-slate-400">Carteirinha · EPI · Ordem de serviço</p>
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t space-y-2 bg-white">
+          <InstallAppButton className="w-full" />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
