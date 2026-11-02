@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   importColaboradores,
@@ -9,7 +9,14 @@ import {
 import { textoOcrParaCsv } from "@/lib/ocr-colaboradores";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Camera, ClipboardPaste, FileSpreadsheet, Loader2, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  ClipboardPaste,
+  FileSpreadsheet,
+  Loader2,
+  Upload,
+} from "lucide-react";
 
 type EmpresaOption = { id: string; razaoSocial: string; nomeFantasia: string | null };
 type Tab = "colar" | "arquivo" | "foto";
@@ -18,6 +25,7 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const imageFileRef = useRef<HTMLInputElement>(null);
 
   const [tab, setTab] = useState<Tab>("colar");
   const [empresaId, setEmpresaId] = useState(empresas[0]?.id || "");
@@ -76,7 +84,7 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
     reader.readAsText(file, "UTF-8");
   }
 
-  async function runOcr(file: File) {
+  async function runOcr(file: File | Blob, nomeOrigem = "imagem") {
     setError("");
     setInfo("");
     setOcrLoading(true);
@@ -104,7 +112,7 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
       const estruturado = textoOcrParaCsv(raw);
       setTexto(estruturado);
       setInfo(
-        "Texto extraído da foto. Revise Nome/CPF na pré-visualização antes de importar — OCR pode errar letras."
+        `Texto extraído (${nomeOrigem}). Revise Nome/CPF na pré-visualização antes de importar — OCR pode errar letras.`
       );
       setTab("colar");
     } catch (err) {
@@ -119,14 +127,50 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
   function onImageSelected(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Selecione uma imagem (foto ou scan)." );
+      setError("Selecione uma imagem (foto ou scan).");
       return;
     }
-    void runOcr(file);
+    void runOcr(file, file.name);
   }
 
+  async function colarImagemClipboard() {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (!type) continue;
+        const blob = await item.getType(type);
+        await runOcr(blob, "colar");
+        return;
+      }
+      setError("Nenhuma imagem na área de transferência.");
+    } catch {
+      setError("Não foi possível colar a imagem (permissão do navegador). Use upload ou câmera.");
+    }
+  }
+
+  // Colar imagem com Ctrl+V na aba foto
+  useEffect(() => {
+    if (tab !== "foto") return;
+    function onPaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) void runOcr(file, "Ctrl+V");
+          break;
+        }
+      }
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   const tabs: { id: Tab; label: string; icon: typeof ClipboardPaste }[] = [
-    { id: "colar", label: "Colar", icon: ClipboardPaste },
+    { id: "colar", label: "Colar texto", icon: ClipboardPaste },
     { id: "arquivo", label: "CSV", icon: FileSpreadsheet },
     { id: "foto", label: "Foto / Scanner", icon: Camera },
   ];
@@ -184,7 +228,6 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
             </select>
           </div>
 
-          {/* Abas */}
           <div className="flex rounded-lg border bg-slate-50 p-1 gap-1">
             {tabs.map((t) => (
               <button
@@ -222,8 +265,8 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
           {tab === "foto" && (
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                Tire uma foto da lista ou envie um scan. O sistema lê o texto (OCR) e tenta montar
-                Nome e CPF. Depois você revisa e importa.
+                Foto ou scan da lista de colaboradores (ou da empresa). O sistema lê o texto (OCR) e
+                tenta preencher Nome, CPF, setor e função. Depois revise e importe.
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
@@ -234,17 +277,27 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
                   className="flex-1"
                 >
                   <Camera className="w-4 h-4" />
-                  Tirar foto / câmera
+                  Câmera / scanner
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   disabled={ocrLoading}
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => imageFileRef.current?.click()}
                   className="flex-1"
                 >
                   <Upload className="w-4 h-4" />
-                  Enviar imagem / scan
+                  Enviar imagem
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={ocrLoading}
+                  onClick={colarImagemClipboard}
+                  className="flex-1"
+                >
+                  <ClipboardPaste className="w-4 h-4" />
+                  Colar imagem
                 </Button>
               </div>
               <input
@@ -256,7 +309,7 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
                 onChange={(e) => onImageSelected(e.target.files?.[0])}
               />
               <input
-                ref={fileRef}
+                ref={imageFileRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
@@ -280,8 +333,8 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
               )}
 
               <p className="text-xs text-slate-500">
-                Dica: foto reta, boa luz, lista legível. Listas manuscritas têm leitura pior que
-                impressas.
+                Também funciona com <strong>Ctrl+V</strong> / colar foto nesta aba. Prefira lista
+                impressa nítida.
               </p>
             </div>
           )}
@@ -290,7 +343,7 @@ export function ImportColaboradoresForm({ empresas }: { empresas: EmpresaOption[
             <div className="space-y-2">
               <label className="text-sm font-medium">Lista (editar / revisar) *</label>
               <p className="text-xs text-slate-500">
-                Cole do Excel ou revise o texto vindo do OCR. Colunas: Nome;CPF;Setor;Função
+                Cole do Excel ou revise o texto do OCR. Colunas: Nome;CPF;Setor;Função
               </p>
               <textarea
                 value={texto}

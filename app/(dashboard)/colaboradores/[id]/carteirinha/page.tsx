@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getColaborador } from "@/app/actions/colaboradores";
 import { Button } from "@/components/ui/button";
+import { PrintButton } from "@/components/print-button";
 import { formatCPF, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -23,29 +24,7 @@ export default async function CarteirinhaPage({
         <Link href={`/colaboradores/${id}`}>
           <Button variant="outline">Voltar</Button>
         </Link>
-        <Button className="bg-sgs-700 hover:bg-sgs-800" onClick={undefined} asChild>
-          <button type="button" onClick={() => typeof window !== "undefined" && window.print()}>
-            Imprimir carteirinha
-          </button>
-        </Button>
-      </div>
-
-      {/* Fallback client print */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `document.querySelector('[data-print]')?.addEventListener('click',()=>window.print())`,
-        }}
-      />
-
-      <div className="print:hidden">
-        <button
-          data-print
-          type="button"
-          className="w-full rounded-md bg-sgs-700 hover:bg-sgs-800 text-white text-sm py-2"
-          // @ts-expect-error server component button handled via script
-        >
-          Imprimir / salvar PDF
-        </button>
+        <PrintButton label="Imprimir / PDF" />
       </div>
 
       <div className="rounded-xl border-2 border-sgs-700 bg-white overflow-hidden shadow-sm">

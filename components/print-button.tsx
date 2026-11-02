@@ -1,12 +1,15 @@
 "use client";
 
-export function PrintButton() {
+import { Button } from "@/components/ui/button";
+
+export function PrintButton({ label = "Imprimir" }: { label?: string }) {
   return (
-    <button
+    <Button
+      type="button"
+      className="bg-sgs-700 hover:bg-sgs-800"
       onClick={() => window.print()}
-      className="rounded-md bg-sgs-700 px-4 py-2 text-sm font-medium text-white hover:bg-sgs-800"
     >
-      Imprimir / Salvar PDF
-    </button>
+      {label}
+    </Button>
   );
 }
