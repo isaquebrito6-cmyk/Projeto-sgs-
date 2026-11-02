@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Stethoscope } from "lucide-react";
-import { getPGR } from "@/app/actions/pgr";
+import { ArrowLeft, FileText, Stethoscope, RefreshCw } from "lucide-react";
+import { getPGR, sincronizarCaracterizacaoPGR } from "@/app/actions/pgr";
+import { labelGrauRisco } from "@/lib/pgr-nr1";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PGRInventario } from "@/components/pgr-inventario";
 import { PGRPlanoAcao } from "@/components/pgr-plano-acao";
-import { formatDate } from "@/lib/utils";
+import { SyncPGRButton } from "@/components/sync-pgr-button";
+import { formatDate, formatCNPJ } from "@/lib/utils";
 import { STATUS_DOCUMENTO_LABELS } from "@/types";
 
 const statusColor: Record<string, string> = {
@@ -28,6 +30,7 @@ export default async function PGRDetailPage({
   if (!pgr) notFound();
 
   const setores = pgr.empresa.setores || [];
+  const emp = pgr.empresa;
 
   return (
     <div className="space-y-6">
@@ -50,17 +53,18 @@ export default async function PGRDetailPage({
               </span>
             </div>
             <p className="text-slate-500 mt-1">
-              {pgr.empresa.nomeFantasia || pgr.empresa.razaoSocial} · v{pgr.versao} ·{" "}
-              {formatDate(pgr.dataElaboracao)}
+              {emp.nomeFantasia || emp.razaoSocial} · v{pgr.versao} · {formatDate(pgr.dataElaboracao)}
+              {emp.grauRisco != null && <> · GR {emp.grauRisco}</>}
             </p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <SyncPGRButton pgrId={id} />
           {!pgr.pcmso && (
             <Link href={`/pcmso/novo?pgrId=${pgr.id}&empresaId=${pgr.empresaId}`}>
               <Button variant="outline" disabled={pgr.inventarioItens.length === 0}>
                 <Stethoscope className="w-4 h-4" />
-                Gerar PCMSO a partir do inventário
+                Gerar PCMSO
               </Button>
             </Link>
           )}
@@ -75,11 +79,44 @@ export default async function PGRDetailPage({
         </div>
       </div>
 
+      {/* Empresa / NR-4 / estrutura */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Empresa, grau de risco e estrutura (NR-1 / NR-4)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-2 gap-3 text-sm">
+          <p>
+            <span className="text-slate-500">Razão social:</span> {emp.razaoSocial}
+          </p>
+          <p>
+            <span className="text-slate-500">CNPJ:</span> {formatCNPJ(emp.cnpj)}
+          </p>
+          <p>
+            <span className="text-slate-500">CNAE:</span> {emp.cnae || "—"}
+          </p>
+          <p>
+            <span className="text-slate-500">Grau de risco (NR-4):</span>{" "}
+            {labelGrauRisco(emp.grauRisco)}
+          </p>
+          <p className="sm:col-span-2">
+            <span className="text-slate-500">Setores / funções / GHE:</span>{" "}
+            {setores.length === 0
+              ? "nenhum setor — cadastre na empresa"
+              : setores
+                  .map(
+                    (s) =>
+                      `${s.nome} (${s._count.colaboradores} colab.; ${s.funcoes.length} funç.; ${s.ghes.length} GHE)`
+                  )
+                  .join(" · ")}
+          </p>
+        </CardContent>
+      </Card>
+
       {pgr.inventarioItens.length === 0 && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Preencha o <strong>inventário de riscos</strong> (obrigatório na NR-1). Depois gere o{" "}
-          <strong>plano de ação</strong> e o <strong>PCMSO</strong> — os exames serão sugeridos com
-          base nos tipos de risco.
+          Preencha o <strong>inventário de riscos</strong> (obrigatório na NR-1). Use setor, função e
+          GHE já cadastrados. Depois monte o <strong>plano de ação</strong> e gere o{" "}
+          <strong>PCMSO</strong>.
         </div>
       )}
 
@@ -101,14 +138,18 @@ export default async function PGRDetailPage({
             </div>
             {pgr.caracterizacaoProcessos && (
               <div className="sm:col-span-2">
-                <dt className="text-slate-500">Caracterização dos processos (puxada da empresa)</dt>
-                <dd className="font-medium mt-0.5 whitespace-pre-wrap">{pgr.caracterizacaoProcessos}</dd>
+                <dt className="text-slate-500">Caracterização (empresa + setores + GHE)</dt>
+                <dd className="font-medium mt-0.5 whitespace-pre-wrap text-xs sm:text-sm">
+                  {pgr.caracterizacaoProcessos}
+                </dd>
               </div>
             )}
             {pgr.metodologiaAvaliacao && (
               <div className="sm:col-span-2">
-                <dt className="text-slate-500">Metodologia de avaliação</dt>
-                <dd className="font-medium mt-0.5 whitespace-pre-wrap">{pgr.metodologiaAvaliacao}</dd>
+                <dt className="text-slate-500">Metodologia de avaliação (NR-1)</dt>
+                <dd className="font-medium mt-0.5 whitespace-pre-wrap text-xs sm:text-sm">
+                  {pgr.metodologiaAvaliacao}
+                </dd>
               </div>
             )}
           </dl>

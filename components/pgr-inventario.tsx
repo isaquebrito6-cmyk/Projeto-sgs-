@@ -11,10 +11,12 @@ import { TIPO_RISCO_LABELS, NIVEL_RISCO_LABELS } from "@/types";
 import type { TipoRisco, NivelRisco } from "@prisma/client";
 
 type FuncaoOpt = { id: string; nome: string; setorId?: string };
+type GheOpt = { id: string; nome: string; descricao?: string | null; setorId?: string };
 type SetorOpt = {
   id: string;
   nome: string;
   funcoes: FuncaoOpt[];
+  ghes?: GheOpt[];
   _count?: { colaboradores: number };
 };
 
@@ -22,6 +24,7 @@ type Item = {
   id: string;
   setorNome: string | null;
   funcaoNome: string | null;
+  gheNome?: string | null;
   fonteGeradora: string | null;
   numeroExpostos: number | null;
   tipoExposicao: string | null;
@@ -44,6 +47,7 @@ const emptyForm: InventarioItemData = {
   tipoRisco: "FISICO",
   setorNome: "",
   funcaoNome: "",
+  gheNome: "",
   fonteGeradora: "",
   numeroExpostos: undefined,
   tipoExposicao: "",
@@ -66,13 +70,13 @@ export function PGRInventario({
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<InventarioItemData>(emptyForm);
 
-  const funcoesDoSetor = useMemo(() => {
-    if (!form.setorNome) {
-      return setores.flatMap((s) => s.funcoes.map((f) => ({ ...f, setorNome: s.nome })));
-    }
-    const s = setores.find((x) => x.nome === form.setorNome);
-    return (s?.funcoes || []).map((f) => ({ ...f, setorNome: s!.nome }));
-  }, [form.setorNome, setores]);
+  const setorAtual = useMemo(
+    () => setores.find((s) => s.nome === form.setorNome),
+    [form.setorNome, setores]
+  );
+
+  const funcoesDoSetor = setorAtual?.funcoes || [];
+  const ghesDoSetor = setorAtual?.ghes || [];
 
   function aplicarSugestao(nome: string) {
     const s = RISCOS_SUGERIDOS.find((r) => r.nome === nome);
@@ -94,6 +98,7 @@ export function PGRInventario({
       ...prev,
       setorNome: nome,
       funcaoNome: "",
+      gheNome: "",
       numeroExpostos: s?._count?.colaboradores ?? prev.numeroExpostos,
     }));
   }
@@ -121,7 +126,7 @@ export function PGRInventario({
       <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
         <CardTitle className="text-lg flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" />
-          Inventário de Riscos Ocupacionais
+          Inventário de Riscos Ocupacionais (NR-1)
           <span className="text-sm font-normal text-slate-400">({itens.length})</span>
         </CardTitle>
         <Button size="sm" variant="outline" onClick={() => setShowForm(true)} disabled={loading}>
@@ -131,17 +136,15 @@ export function PGRInventario({
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-slate-500">
-          Obrigatório no PGR (NR-1): inventário de riscos + plano de ação. Setor e função vêm do
-          cadastro da empresa; o nº de expostos pode ser calculado pelos colaboradores ativos.
+          Conteúdo mínimo NR-1 (1.5.7.3.2): processos/ambientes, atividades, perigos, exposição,
+          medidas e avaliação. Setor, função e <strong>GHE</strong> vêm do cadastro da empresa.
         </p>
 
         {showForm && (
           <div className="p-4 rounded-lg bg-slate-50 border space-y-3">
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2 space-y-1">
-                <label className="text-xs font-medium text-slate-600">
-                  Risco sugerido (atalho) ou digite abaixo
-                </label>
+                <label className="text-xs font-medium text-slate-600">Risco sugerido</label>
                 <select
                   defaultValue=""
                   onChange={(e) => e.target.value && aplicarSugestao(e.target.value)}
@@ -161,8 +164,7 @@ export function PGRInventario({
                   autoFocus
                   value={form.riscoNome}
                   onChange={(e) => setForm({ ...form, riscoNome: e.target.value })}
-                  placeholder="Ex: Ruído, Poeira, Postura inadequada..."
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
               </div>
               <div className="space-y-1">
@@ -180,14 +182,14 @@ export function PGRInventario({
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Setor (cadastro da empresa)</label>
+                <label className="text-xs font-medium text-slate-600">Setor</label>
                 {setores.length > 0 ? (
                   <select
                     value={form.setorNome || ""}
                     onChange={(e) => onSetorChange(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    <option value="">Selecione ou deixe em branco</option>
+                    <option value="">Selecione</option>
                     {setores.map((s) => (
                       <option key={s.id} value={s.nome}>
                         {s.nome}
@@ -199,33 +201,40 @@ export function PGRInventario({
                   <input
                     value={form.setorNome}
                     onChange={(e) => setForm({ ...form, setorNome: e.target.value })}
-                    placeholder="Cadastre setores na empresa para selecionar"
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   />
                 )}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Função</label>
-                {funcoesDoSetor.length > 0 || setores.length > 0 ? (
-                  <select
-                    value={form.funcaoNome || ""}
-                    onChange={(e) => setForm({ ...form, funcaoNome: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="">Selecione</option>
-                    {funcoesDoSetor.map((f) => (
-                      <option key={f.id} value={f.nome}>
-                        {f.nome}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={form.funcaoNome}
-                    onChange={(e) => setForm({ ...form, funcaoNome: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  />
-                )}
+                <select
+                  value={form.funcaoNome || ""}
+                  onChange={(e) => setForm({ ...form, funcaoNome: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  disabled={!form.setorNome && funcoesDoSetor.length === 0}
+                >
+                  <option value="">Selecione</option>
+                  {funcoesDoSetor.map((f) => (
+                    <option key={f.id} value={f.nome}>
+                      {f.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">GHE</label>
+                <select
+                  value={form.gheNome || ""}
+                  onChange={(e) => setForm({ ...form, gheNome: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Selecione (se houver)</option>
+                  {ghesDoSetor.map((g) => (
+                    <option key={g.id} value={g.nome}>
+                      {g.nome}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Fonte geradora</label>
@@ -307,7 +316,7 @@ export function PGRInventario({
 
         {itens.length === 0 && !showForm && (
           <p className="text-sm text-slate-500 text-center py-6">
-            Nenhum risco no inventário. Adicione os perigos identificados (obrigatório para o PGR).
+            Nenhum risco no inventário. Adicione os perigos por setor, função e GHE.
           </p>
         )}
 
@@ -328,7 +337,9 @@ export function PGRInventario({
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {[item.setorNome, item.funcaoNome, item.fonteGeradora].filter(Boolean).join(" · ")}
+                {[item.setorNome, item.funcaoNome, item.gheNome ? `GHE: ${item.gheNome}` : null, item.fonteGeradora]
+                  .filter(Boolean)
+                  .join(" · ")}
                 {item.numeroExpostos != null && ` · ${item.numeroExpostos} exposto(s)`}
                 {item.probabilidade && item.severidade && ` · P${item.probabilidade}×S${item.severidade}`}
               </p>
