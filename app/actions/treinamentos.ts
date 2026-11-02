@@ -8,6 +8,7 @@ export type TreinamentoFormData = {
   titulo: string;
   tipo: string;
   empresaId: string;
+  catalogoId?: string;
   cargaHoraria?: string;
   dataRealizacao?: string;
   validade?: string;
@@ -15,6 +16,7 @@ export type TreinamentoFormData = {
   local?: string;
   conteudo?: string;
   observacoes?: string;
+  materialUrl?: string;
   colaboradorIds?: string[];
 };
 
@@ -69,10 +71,25 @@ export async function createTreinamento(data: TreinamentoFormData) {
 
     if (!data.titulo?.trim()) return { error: "Título é obrigatório." };
 
+    // Se não informou materialUrl, tenta usar o cadastrado para o catálogo
+    let materialUrl = data.materialUrl?.trim() || null;
+    if (!materialUrl && data.catalogoId) {
+      const mat = await prisma.materialTreinamento.findUnique({
+        where: {
+          empresaId_catalogoId: {
+            empresaId: data.empresaId,
+            catalogoId: data.catalogoId,
+          },
+        },
+      });
+      if (mat) materialUrl = mat.url;
+    }
+
     const t = await prisma.treinamento.create({
       data: {
         titulo: data.titulo.trim(),
         tipo: data.tipo?.trim() || "Treinamento",
+        catalogoId: data.catalogoId || null,
         empresaId: data.empresaId,
         cargaHoraria: data.cargaHoraria ? parseInt(data.cargaHoraria, 10) : null,
         dataRealizacao: data.dataRealizacao ? new Date(data.dataRealizacao) : null,
@@ -81,6 +98,7 @@ export async function createTreinamento(data: TreinamentoFormData) {
         local: data.local?.trim() || null,
         conteudo: data.conteudo?.trim() || null,
         observacoes: data.observacoes?.trim() || null,
+        materialUrl,
         participantes: data.colaboradorIds?.length
           ? {
               create: data.colaboradorIds.map((colaboradorId) => ({

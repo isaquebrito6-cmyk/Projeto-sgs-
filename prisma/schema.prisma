@@ -78,24 +78,26 @@ model VerificationToken {
 // ==================== EMPRESAS E CLÍNICAS ====================
 
 model Empresa {
-  id                 String   @id @default(cuid())
-  razaoSocial        String
-  nomeFantasia       String?
-  cnpj               String   @unique
-  inscricaoEstadual  String?
-  endereco           String?
-  cidade             String?
-  uf                 String?
-  cep                String?
-  telefone           String?
-  email              String?
-  grauRisco          Int?
-  cnae               String?
-  numeroFuncionarios Int?
-  logoUrl            String?
-  ativo              Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  razaoSocial           String
+  nomeFantasia          String?
+  cnpj                  String   @unique
+  inscricaoEstadual     String?
+  endereco              String?
+  cidade                String?
+  uf                    String?
+  cep                   String?
+  telefone              String?
+  email                 String?
+  grauRisco             Int?
+  cnae                  String?
+  numeroFuncionarios    Int?
+  logoUrl               String?
+  /// Link da pasta na nuvem (Google Drive, OneDrive, Dropbox) com materiais de treinamento
+  pastaTreinamentosUrl  String?
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   users              User[]
   setores            Setor[]
@@ -104,6 +106,7 @@ model Empresa {
   pcmso              PCMSO[]
   solicitacoesExame  SolicitacaoExame[]
   treinamentos       Treinamento[]
+  materiaisTreinamento MaterialTreinamento[]
 }
 
 model Clinica {
@@ -456,12 +459,13 @@ model ASO {
   medicoId      String?
 }
 
-// ==================== TREINAMENTOS / DDS ====================
+// ==================== TREINAMENTOS / MATERIAIS ====================
 
 model Treinamento {
   id             String    @id @default(cuid())
   titulo         String
-  tipo           String    // NR-06, NR-10, DDS, Integração, etc.
+  tipo           String
+  catalogoId     String?
   cargaHoraria   Int?
   dataRealizacao DateTime?
   validade       DateTime?
@@ -469,6 +473,8 @@ model Treinamento {
   local          String?
   conteudo       String?
   observacoes    String?
+  /// Link do material deste treinamento (PDF, pasta Drive etc.)
+  materialUrl    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -490,4 +496,21 @@ model TreinamentoParticipante {
   colaboradorId String
 
   @@unique([treinamentoId, colaboradorId])
+}
+
+/// Link de material por tipo de NR / catálogo, por empresa (pasta ou arquivo na nuvem)
+model MaterialTreinamento {
+  id          String   @id @default(cuid())
+  catalogoId  String
+  titulo      String
+  norma       String?
+  url         String
+  descricao   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId String
+
+  @@unique([empresaId, catalogoId])
 }

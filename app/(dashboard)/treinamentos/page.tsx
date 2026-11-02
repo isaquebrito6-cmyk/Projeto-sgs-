@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, GraduationCap } from "lucide-react";
+import { Plus, GraduationCap, FolderOpen } from "lucide-react";
 import { listTreinamentos } from "@/app/actions/treinamentos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,12 +19,20 @@ export default async function TreinamentosPage() {
             Registre treinamentos de NRs, DDS e controle de participantes
           </p>
         </div>
-        <Link href="/treinamentos/novo">
-          <Button className="bg-sgs-700 hover:bg-sgs-800">
-            <Plus className="w-4 h-4" />
-            Novo treinamento
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/treinamentos/materiais">
+            <Button variant="outline">
+              <FolderOpen className="w-4 h-4" />
+              Materiais / pasta
+            </Button>
+          </Link>
+          <Link href="/treinamentos/novo">
+            <Button className="bg-sgs-700 hover:bg-sgs-800">
+              <Plus className="w-4 h-4" />
+              Novo treinamento
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {itens.length === 0 ? (
@@ -35,14 +43,23 @@ export default async function TreinamentosPage() {
             </div>
             <h3 className="text-lg font-semibold text-slate-900">Nenhum treinamento registrado</h3>
             <p className="text-slate-500 mt-1 max-w-sm">
-              Cadastre DDS, NR-06, NR-10, integração e outros treinamentos com lista de presença.
+              Cadastre DDS, NR-06, NR-10 e outros. Configure a pasta de materiais na nuvem para abrir
+              o conteúdo na hora do treinamento.
             </p>
-            <Link href="/treinamentos/novo" className="mt-6">
-              <Button className="bg-sgs-700 hover:bg-sgs-800">
-                <Plus className="w-4 h-4" />
-                Registrar treinamento
-              </Button>
-            </Link>
+            <div className="flex flex-wrap gap-2 mt-6 justify-center">
+              <Link href="/treinamentos/materiais">
+                <Button variant="outline">
+                  <FolderOpen className="w-4 h-4" />
+                  Configurar pasta
+                </Button>
+              </Link>
+              <Link href="/treinamentos/novo">
+                <Button className="bg-sgs-700 hover:bg-sgs-800">
+                  <Plus className="w-4 h-4" />
+                  Registrar treinamento
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       ) : (
