@@ -11,9 +11,14 @@ import {
 } from "@/lib/nr-treinamentos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ExternalLink } from "lucide-react";
 
-type EmpresaOption = { id: string; razaoSocial: string; nomeFantasia: string | null };
+type EmpresaOption = {
+  id: string;
+  razaoSocial: string;
+  nomeFantasia: string | null;
+  pastaTreinamentosUrl?: string | null;
+};
 type ColabOption = {
   id: string;
   nome: string;
@@ -36,6 +41,7 @@ export function TreinamentoForm({
     titulo: CATALOGO_TREINAMENTOS[0]?.titulo || "",
     tipo: CATALOGO_TREINAMENTOS[0]?.norma || "DDS",
     empresaId: empresas[0]?.id || "",
+    catalogoId: CATALOGO_TREINAMENTOS[0]?.id || "",
     cargaHoraria: CATALOGO_TREINAMENTOS[0]?.cargaHorariaMin?.toString() || "",
     dataRealizacao: "",
     validade: "",
@@ -43,10 +49,12 @@ export function TreinamentoForm({
     local: "",
     conteudo: CATALOGO_TREINAMENTOS[0]?.conteudoProgramatico || "",
     observacoes: CATALOGO_TREINAMENTOS[0]?.observacao || "",
+    materialUrl: "",
     colaboradorIds: [],
   });
 
   const cat = getCatalogoById(catalogoId);
+  const empresaAtual = empresas.find((e) => e.id === form.empresaId);
 
   const colabsEmpresa = useMemo(
     () => colaboradores.filter((c) => c.empresaId === form.empresaId),
@@ -67,6 +75,7 @@ export function TreinamentoForm({
       }
       return {
         ...prev,
+        catalogoId: id,
         titulo: c.titulo,
         tipo: c.norma,
         cargaHoraria: c.cargaHorariaMin != null ? String(c.cargaHorariaMin) : prev.cargaHoraria,
@@ -110,7 +119,7 @@ export function TreinamentoForm({
     setError("");
     setLoading(true);
     try {
-      const res = await createTreinamento(form);
+      const res = await createTreinamento({ ...form, catalogoId });
       if (res.error) {
         setError(res.error);
         setLoading(false);
@@ -240,6 +249,28 @@ export function TreinamentoForm({
                 onChange={(e) => update("local", e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              <label className="text-sm font-medium">Link do material (opcional)</label>
+              <input
+                value={form.materialUrl || ""}
+                onChange={(e) => update("materialUrl", e.target.value)}
+                placeholder="https://drive.google.com/... (PDF ou pasta)"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-slate-500">
+                Se vazio, usa o material cadastrado em Materiais / pasta para este tipo de NR.{" "}
+                {empresaAtual?.pastaTreinamentosUrl && (
+                  <a
+                    href={empresaAtual.pastaTreinamentosUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sgs-700 underline inline-flex items-center gap-0.5"
+                  >
+                    Abrir pasta da empresa <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </p>
             </div>
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Conteúdo programático (NR-1)</label>
