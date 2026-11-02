@@ -10,6 +10,7 @@ import {
 import { listSetores } from "@/app/actions/setores";
 import { actionBuscarCPF, actionValidarCPF } from "@/app/actions/brasil";
 import { formatCPFMask } from "@/lib/brasil";
+import { FotoPicker } from "@/components/foto-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2, Search } from "lucide-react";
@@ -32,6 +33,7 @@ type ColaboradorData = {
   empresaId: string;
   setorId: string | null;
   funcaoId: string | null;
+  fotoUrl?: string | null;
 };
 
 type SetorComFuncoes = {
@@ -72,6 +74,7 @@ export function ColaboradorForm({
     empresaId: colaborador?.empresaId ?? (empresas[0]?.id || ""),
     setorId: colaborador?.setorId ?? "",
     funcaoId: colaborador?.funcaoId ?? "",
+    fotoUrl: colaborador?.fotoUrl ?? "",
   });
 
   useEffect(() => {
@@ -82,8 +85,7 @@ export function ColaboradorForm({
     }
   }, [form.empresaId]);
 
-  const funcoesDoSetor =
-    setores.find((s) => s.id === form.setorId)?.funcoes ?? [];
+  const funcoesDoSetor = setores.find((s) => s.id === form.setorId)?.funcoes ?? [];
 
   function update(field: keyof ColaboradorFormData, value: string) {
     setForm((prev) => {
@@ -151,6 +153,7 @@ export function ColaboradorForm({
         ...form,
         setorId: form.setorId || undefined,
         funcaoId: form.funcaoId || undefined,
+        fotoUrl: form.fotoUrl || undefined,
       };
 
       if (isEditing) {
@@ -189,6 +192,11 @@ export function ColaboradorForm({
           )}
 
           <div className="grid sm:grid-cols-2 gap-4">
+            <FotoPicker
+              value={form.fotoUrl}
+              onChange={(url) => setForm((prev) => ({ ...prev, fotoUrl: url || "" }))}
+            />
+
             <div className="space-y-2 sm:col-span-2">
               <label className="text-sm font-medium">CPF *</label>
               <div className="flex gap-2">
@@ -237,7 +245,7 @@ export function ColaboradorForm({
                 required
                 value={form.nome}
                 onChange={(e) => update("nome", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
 
@@ -247,7 +255,7 @@ export function ColaboradorForm({
                 type="date"
                 value={form.dataNascimento}
                 onChange={(e) => update("dataNascimento", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -255,7 +263,7 @@ export function ColaboradorForm({
               <select
                 value={form.sexo}
                 onChange={(e) => update("sexo", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">Selecione</option>
                 <option value="M">Masculino</option>
@@ -269,7 +277,7 @@ export function ColaboradorForm({
                 type="email"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -278,7 +286,7 @@ export function ColaboradorForm({
                 value={form.telefone}
                 onChange={(e) => update("telefone", e.target.value)}
                 placeholder="(00) 00000-0000"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
 
@@ -292,7 +300,7 @@ export function ColaboradorForm({
                 required
                 value={form.empresaId}
                 onChange={(e) => update("empresaId", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">Selecione a empresa</option>
                 {empresas.map((emp) => (
@@ -308,7 +316,7 @@ export function ColaboradorForm({
                 value={form.setorId}
                 onChange={(e) => update("setorId", e.target.value)}
                 disabled={!form.empresaId || setores.length === 0}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
               >
                 <option value="">
                   {setores.length === 0 ? "Nenhum setor cadastrado" : "Selecione o setor"}
@@ -326,7 +334,7 @@ export function ColaboradorForm({
                 value={form.funcaoId}
                 onChange={(e) => update("funcaoId", e.target.value)}
                 disabled={!form.setorId || funcoesDoSetor.length === 0}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
               >
                 <option value="">
                   {funcoesDoSetor.length === 0 ? "Nenhuma função" : "Selecione a função"}
@@ -344,7 +352,7 @@ export function ColaboradorForm({
                 type="date"
                 value={form.dataAdmissao}
                 onChange={(e) => update("dataAdmissao", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
           </div>

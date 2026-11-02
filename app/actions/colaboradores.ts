@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser, isAdmin, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant";
+import { requireUser, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant";
 
 export type ColaboradorFormData = {
   nome: string;
@@ -15,10 +15,20 @@ export type ColaboradorFormData = {
   empresaId: string;
   setorId?: string;
   funcaoId?: string;
+  fotoUrl?: string;
 };
 
 function cleanCPF(cpf: string) {
   return cpf.replace(/\D/g, "");
+}
+
+/** Limita tamanho da data URL (~350 KB chars) para não estourar o banco */
+function sanitizeFoto(foto?: string | null) {
+  if (!foto?.trim()) return null;
+  const t = foto.trim();
+  if (!t.startsWith("data:image/")) return null;
+  if (t.length > 400_000) return null;
+  return t;
 }
 
 export async function listColaboradores(empresaId?: string) {
@@ -81,6 +91,7 @@ export async function createColaborador(data: ColaboradorFormData) {
       empresaId: data.empresaId,
       setorId: data.setorId || null,
       funcaoId: data.funcaoId || null,
+      fotoUrl: sanitizeFoto(data.fotoUrl),
     },
   });
 
@@ -112,6 +123,7 @@ export async function updateColaborador(id: string, data: ColaboradorFormData) {
       empresaId: data.empresaId,
       setorId: data.setorId || null,
       funcaoId: data.funcaoId || null,
+      fotoUrl: sanitizeFoto(data.fotoUrl),
     },
   });
 

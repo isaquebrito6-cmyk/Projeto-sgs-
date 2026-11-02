@@ -10,8 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== AUTH ====================
-
 enum Role {
   ADMIN
   EMPRESA
@@ -30,14 +28,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-
-  empresa       Empresa?  @relation(fields: [empresaId], references: [id])
-  empresaId     String?
-  clinica       Clinica?  @relation(fields: [clinicaId], references: [id])
-  clinicaId     String?
-  medico        Medico?
+  accounts  Account[]
+  sessions  Session[]
+  empresa   Empresa?  @relation(fields: [empresaId], references: [id])
+  empresaId String?
+  clinica   Clinica?  @relation(fields: [clinicaId], references: [id])
+  clinicaId String?
+  medico    Medico?
 }
 
 model Account {
@@ -53,8 +50,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -75,37 +71,34 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ==================== EMPRESAS E CLÍNICAS ====================
-
 model Empresa {
-  id                    String   @id @default(cuid())
-  razaoSocial           String
-  nomeFantasia          String?
-  cnpj                  String   @unique
-  inscricaoEstadual     String?
-  endereco              String?
-  cidade                String?
-  uf                    String?
-  cep                   String?
-  telefone              String?
-  email                 String?
-  grauRisco             Int?
-  cnae                  String?
-  numeroFuncionarios    Int?
-  logoUrl               String?
-  /// Link da pasta na nuvem (Google Drive, OneDrive, Dropbox) com materiais de treinamento
-  pastaTreinamentosUrl  String?
-  ativo                 Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  razaoSocial          String
+  nomeFantasia         String?
+  cnpj                 String   @unique
+  inscricaoEstadual    String?
+  endereco             String?
+  cidade               String?
+  uf                   String?
+  cep                  String?
+  telefone             String?
+  email                String?
+  grauRisco            Int?
+  cnae                 String?
+  numeroFuncionarios   Int?
+  logoUrl              String?  @db.Text
+  pastaTreinamentosUrl String?
+  ativo                Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  users              User[]
-  setores            Setor[]
-  colaboradores      Colaborador[]
-  pgrs               PGR[]
-  pcmso              PCMSO[]
-  solicitacoesExame  SolicitacaoExame[]
-  treinamentos       Treinamento[]
+  users                User[]
+  setores              Setor[]
+  colaboradores        Colaborador[]
+  pgrs                 PGR[]
+  pcmso                PCMSO[]
+  solicitacoesExame    SolicitacaoExame[]
+  treinamentos         Treinamento[]
   materiaisTreinamento MaterialTreinamento[]
 }
 
@@ -142,25 +135,23 @@ model Medico {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user              User?   @relation(fields: [userId], references: [id])
-  userId            String? @unique
-  clinica           Clinica @relation(fields: [clinicaId], references: [id])
-  clinicaId         String
+  user     User?   @relation(fields: [userId], references: [id])
+  userId   String? @unique
+  clinica  Clinica @relation(fields: [clinicaId], references: [id])
+  clinicaId String
 
   pcmsoCoordenados PCMSO[] @relation("MedicoCoordenador")
   asosEmitidos     ASO[]
 }
 
-// ==================== COLABORADORES E ESTRUTURA ====================
-
 model Setor {
-  id        String   @id @default(cuid())
-  nome      String
-  descricao String?
-  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  nome        String
+  descricao   String?
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   funcoes       Funcao[]
   ghes          GHE[]
@@ -191,6 +182,8 @@ model Colaborador {
   telefone       String?
   dataAdmissao   DateTime?
   dataDemissao   DateTime?
+  /// Foto 3x4 comprimida (data URL) para carteirinha / identificação
+  fotoUrl        String?   @db.Text
   ativo          Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -208,8 +201,6 @@ model Colaborador {
 
   @@unique([empresaId, cpf])
 }
-
-// ==================== RISCOS E GHE ====================
 
 enum TipoRisco {
   FISICO
@@ -282,8 +273,6 @@ model RiscoGHE {
   @@unique([gheId, riscoId])
 }
 
-// ==================== PGR ====================
-
 enum StatusDocumento {
   RASCUNHO
   EM_REVISAO
@@ -351,8 +340,6 @@ model PlanoAcaoItem {
   updatedAt        DateTime  @updatedAt
 }
 
-// ==================== PCMSO ====================
-
 model PCMSO {
   id              String          @id @default(cuid())
   titulo          String
@@ -367,11 +354,11 @@ model PCMSO {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  empresa             Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa             Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId           String
-  pgr                 PGR?     @relation(fields: [pgrId], references: [id])
-  pgrId               String?  @unique
-  medicoCoordenador   Medico?  @relation("MedicoCoordenador", fields: [medicoCoordenadorId], references: [id])
+  pgr                 PGR?         @relation(fields: [pgrId], references: [id])
+  pgrId               String?      @unique
+  medicoCoordenador   Medico?      @relation("MedicoCoordenador", fields: [medicoCoordenadorId], references: [id])
   medicoCoordenadorId String?
   exames              ExamePCMSO[]
 }
@@ -392,8 +379,6 @@ model ExamePCMSO {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
-
-// ==================== FLUXO DE EXAMES E ASO ====================
 
 enum StatusSolicitacao {
   PENDENTE
@@ -425,9 +410,9 @@ model SolicitacaoExame {
 }
 
 model ASO {
-  id                    String    @id @default(cuid())
+  id                    String   @id @default(cuid())
   numero                String?
-  dataEmissao           DateTime  @default(now())
+  dataEmissao           DateTime @default(now())
   dataExame             DateTime?
   razaoSocialEmpresa    String
   cnpjEmpresa           String
@@ -446,8 +431,8 @@ model ASO {
   arquivoUrl            String?
   observacoes           String?
   checklistPsicossocial String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   solicitacao   SolicitacaoExame @relation(fields: [solicitacaoId], references: [id])
   solicitacaoId String           @unique
@@ -458,8 +443,6 @@ model ASO {
   medico        Medico?          @relation(fields: [medicoId], references: [id])
   medicoId      String?
 }
-
-// ==================== TREINAMENTOS / MATERIAIS ====================
 
 model Treinamento {
   id             String    @id @default(cuid())
@@ -473,12 +456,11 @@ model Treinamento {
   local          String?
   conteudo       String?
   observacoes    String?
-  /// Link do material deste treinamento (PDF, pasta Drive etc.)
   materialUrl    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  empresa       Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa       Empresa                   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId     String
   participantes TreinamentoParticipante[]
 }
@@ -498,16 +480,15 @@ model TreinamentoParticipante {
   @@unique([treinamentoId, colaboradorId])
 }
 
-/// Link de material por tipo de NR / catálogo, por empresa (pasta ou arquivo na nuvem)
 model MaterialTreinamento {
-  id          String   @id @default(cuid())
-  catalogoId  String
-  titulo      String
-  norma       String?
-  url         String
-  descricao   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  catalogoId String
+  titulo     String
+  norma      String?
+  url        String
+  descricao  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId String
