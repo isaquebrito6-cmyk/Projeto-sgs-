@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Upload } from "lucide-react";
 import { listColaboradores } from "@/app/actions/colaboradores";
 import { listEmpresas } from "@/app/actions/empresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCPF, formatDate } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 export default async function ColaboradoresPage({
   searchParams,
@@ -26,15 +28,22 @@ export default async function ColaboradoresPage({
             Gerencie os colaboradores e vincule a setores e funções
           </p>
         </div>
-        <Link href="/colaboradores/novo">
-          <Button className="bg-sgs-700 hover:bg-sgs-800">
-            <Plus className="w-4 h-4" />
-            Novo colaborador
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/colaboradores/importar">
+            <Button variant="outline">
+              <Upload className="w-4 h-4" />
+              Importar lista
+            </Button>
+          </Link>
+          <Link href="/colaboradores/novo">
+            <Button className="bg-sgs-700 hover:bg-sgs-800">
+              <Plus className="w-4 h-4" />
+              Novo colaborador
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Filtro por empresa */}
       {empresas.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <Link
@@ -71,14 +80,22 @@ export default async function ColaboradoresPage({
             </div>
             <h3 className="text-lg font-semibold text-slate-900">Nenhum colaborador cadastrado</h3>
             <p className="text-slate-500 mt-1 max-w-sm">
-              Cadastre colaboradores para vincular a exames, PCMSO e gerar ASOs.
+              Cadastre um a um ou importe uma lista (CSV / colar do Excel).
             </p>
-            <Link href="/colaboradores/novo" className="mt-6">
-              <Button className="bg-sgs-700 hover:bg-sgs-800">
-                <Plus className="w-4 h-4" />
-                Cadastrar colaborador
-              </Button>
-            </Link>
+            <div className="flex flex-wrap gap-2 mt-6 justify-center">
+              <Link href="/colaboradores/importar">
+                <Button variant="outline">
+                  <Upload className="w-4 h-4" />
+                  Importar lista
+                </Button>
+              </Link>
+              <Link href="/colaboradores/novo">
+                <Button className="bg-sgs-700 hover:bg-sgs-800">
+                  <Plus className="w-4 h-4" />
+                  Cadastrar colaborador
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       ) : (

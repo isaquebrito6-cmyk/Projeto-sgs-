@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Hospital,
+  GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/pgr", label: "PGR", icon: FileText },
   { href: "/pcmso", label: "PCMSO", icon: Stethoscope },
   { href: "/exames", label: "Exames / ASO", icon: ClipboardList },
+  { href: "/treinamentos", label: "Treinamentos", icon: GraduationCap },
 ];
 
 export default function DashboardLayout({
@@ -110,7 +112,7 @@ export default function DashboardLayout({
 
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t space-y-2">
           <p className="px-3 text-[10px] uppercase tracking-wide text-slate-400">Em breve</p>
-          <p className="px-3 text-xs text-slate-400">Treinamentos · Carteirinha · EPI · OS</p>
+          <p className="px-3 text-xs text-slate-400">Carteirinha · EPI · Ordem de serviço</p>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
