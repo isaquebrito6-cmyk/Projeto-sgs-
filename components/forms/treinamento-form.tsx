@@ -3,6 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createTreinamento, type TreinamentoFormData } from "@/app/actions/treinamentos";
+import {
+  CATALOGO_TREINAMENTOS,
+  calcularValidade,
+  formatValidadeLabel,
+  getCatalogoById,
+} from "@/lib/nr-treinamentos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
@@ -12,21 +18,7 @@ type ColabOption = {
   id: string;
   nome: string;
   empresaId: string;
-  empresa?: { nomeFantasia: string | null; razaoSocial: string };
 };
-
-const TIPOS = [
-  "DDS",
-  "NR-06",
-  "NR-10",
-  "NR-12",
-  "NR-18",
-  "NR-35",
-  "Integração",
-  "CIPA",
-  "Brigada",
-  "Outro",
-];
 
 export function TreinamentoForm({
   empresas,
@@ -38,29 +30,61 @@ export function TreinamentoForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [catalogoId, setCatalogoId] = useState(CATALOGO_TREINAMENTOS[0]?.id || "dds");
+
   const [form, setForm] = useState<TreinamentoFormData>({
-    titulo: "",
-    tipo: "DDS",
+    titulo: CATALOGO_TREINAMENTOS[0]?.titulo || "",
+    tipo: CATALOGO_TREINAMENTOS[0]?.norma || "DDS",
     empresaId: empresas[0]?.id || "",
-    cargaHoraria: "",
+    cargaHoraria: CATALOGO_TREINAMENTOS[0]?.cargaHorariaMin?.toString() || "",
     dataRealizacao: "",
     validade: "",
     instrutor: "",
     local: "",
-    conteudo: "",
-    observacoes: "",
+    conteudo: CATALOGO_TREINAMENTOS[0]?.conteudoProgramatico || "",
+    observacoes: CATALOGO_TREINAMENTOS[0]?.observacao || "",
     colaboradorIds: [],
   });
+
+  const cat = getCatalogoById(catalogoId);
 
   const colabsEmpresa = useMemo(
     () => colaboradores.filter((c) => c.empresaId === form.empresaId),
     [colaboradores, form.empresaId]
   );
 
+  function applyCatalogo(id: string) {
+    const c = getCatalogoById(id);
+    if (!c) return;
+    setCatalogoId(id);
+    setForm((prev) => {
+      let validade = prev.validade;
+      if (prev.dataRealizacao && c.validadeMeses) {
+        const v = calcularValidade(new Date(prev.dataRealizacao), c.validadeMeses);
+        if (v) validade = v.toISOString().slice(0, 10);
+      } else if (!c.validadeMeses) {
+        validade = "";
+      }
+      return {
+        ...prev,
+        titulo: c.titulo,
+        tipo: c.norma,
+        cargaHoraria: c.cargaHorariaMin != null ? String(c.cargaHorariaMin) : prev.cargaHoraria,
+        conteudo: c.conteudoProgramatico,
+        observacoes: c.observacao || "",
+        validade,
+      };
+    });
+  }
+
   function update(field: keyof TreinamentoFormData, value: string) {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === "empresaId") next.colaboradorIds = [];
+      if (field === "dataRealizacao" && value && cat?.validadeMeses) {
+        const v = calcularValidade(new Date(value), cat.validadeMeses);
+        if (v) next.validade = v.toISOString().slice(0, 10);
+      }
       return next;
     });
   }
@@ -72,6 +96,13 @@ export function TreinamentoForm({
       else set.add(id);
       return { ...prev, colaboradorIds: Array.from(set) };
     });
+  }
+
+  function selectAll() {
+    setForm((prev) => ({
+      ...prev,
+      colaboradorIds: colabsEmpresa.map((c) => c.id),
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -104,6 +135,34 @@ export function TreinamentoForm({
             </div>
           )}
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Modelo conforme NR (MTE) *</label>
+            <select
+              value={catalogoId}
+              onChange={(e) => applyCatalogo(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {CATALOGO_TREINAMENTOS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.norma} — {c.titulo}
+                </option>
+              ))}
+            </select>
+            {cat && (
+              <div className="rounded-md border border-sgs-100 bg-sgs-50/80 px-3 py-2 text-xs text-sgs-900 space-y-1">
+                <p>
+                  <strong>Carga mín. sugerida:</strong>{" "}
+                  {cat.cargaHorariaMin != null ? `${cat.cargaHorariaMin} h` : "definida pelo empregador"}
+                  {" · "}
+                  <strong>Periodicidade:</strong> {formatValidadeLabel(cat.validadeMeses)}
+                  {" · "}
+                  <strong>Modalidade:</strong> {cat.modalidade.replace(/_/g, " ")}
+                </p>
+                {cat.observacao && <p className="text-slate-600">{cat.observacao}</p>}
+              </div>
+            )}
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-2">
               <label className="text-sm font-medium">Título *</label>
@@ -115,18 +174,12 @@ export function TreinamentoForm({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tipo</label>
-              <select
+              <label className="text-sm font-medium">Norma / tipo</label>
+              <input
                 value={form.tipo}
                 onChange={(e) => update("tipo", e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                {TIPOS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Empresa *</label>
@@ -144,7 +197,7 @@ export function TreinamentoForm({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Data</label>
+              <label className="text-sm font-medium">Data de realização</label>
               <input
                 type="date"
                 value={form.dataRealizacao}
@@ -153,7 +206,7 @@ export function TreinamentoForm({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Validade</label>
+              <label className="text-sm font-medium">Validade (próximo periódico)</label>
               <input
                 type="date"
                 value={form.validade}
@@ -172,15 +225,16 @@ export function TreinamentoForm({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Instrutor</label>
+              <label className="text-sm font-medium">Instrutor / responsável técnico</label>
               <input
                 value={form.instrutor}
                 onChange={(e) => update("instrutor", e.target.value)}
+                placeholder="Nome e qualificação (NR-1)"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
             <div className="sm:col-span-2 space-y-2">
-              <label className="text-sm font-medium">Local</label>
+              <label className="text-sm font-medium">Local de realização</label>
               <input
                 value={form.local}
                 onChange={(e) => update("local", e.target.value)}
@@ -188,20 +242,40 @@ export function TreinamentoForm({
               />
             </div>
             <div className="sm:col-span-2 space-y-2">
-              <label className="text-sm font-medium">Conteúdo / pauta</label>
+              <label className="text-sm font-medium">Conteúdo programático (NR-1)</label>
               <textarea
                 value={form.conteudo}
                 onChange={(e) => update("conteudo", e.target.value)}
-                rows={3}
+                rows={5}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              <label className="text-sm font-medium">Observações</label>
+              <textarea
+                value={form.observacoes}
+                onChange={(e) => update("observacoes", e.target.value)}
+                rows={2}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Participantes ({form.colaboradorIds?.length || 0})
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-sm font-medium">
+                Participantes ({form.colaboradorIds?.length || 0})
+              </label>
+              {colabsEmpresa.length > 0 && (
+                <button
+                  type="button"
+                  onClick={selectAll}
+                  className="text-xs text-sgs-700 font-medium hover:underline"
+                >
+                  Selecionar todos da empresa
+                </button>
+              )}
+            </div>
             {colabsEmpresa.length === 0 ? (
               <p className="text-sm text-slate-500">Nenhum colaborador nesta empresa.</p>
             ) : (

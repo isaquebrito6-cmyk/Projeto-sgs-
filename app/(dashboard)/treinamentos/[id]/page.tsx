@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTreinamento } from "@/app/actions/treinamentos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PrintButton } from "@/components/print-button";
 import { formatDate, formatCPF } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function TreinamentoDetalhePage({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 print:hidden">
         <div>
           <p className="text-sm text-sgs-700 font-medium">{t.tipo}</p>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{t.titulo}</h1>
@@ -27,18 +28,26 @@ export default async function TreinamentoDetalhePage({
             {t.dataRealizacao && <> · {formatDate(t.dataRealizacao)}</>}
           </p>
         </div>
-        <Link href="/treinamentos">
-          <Button variant="outline">Voltar</Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/treinamentos/${id}/certificados`}>
+            <Button className="bg-sgs-700 hover:bg-sgs-800">Certificados (NR-1)</Button>
+          </Link>
+          <Link href={`/treinamentos/${id}/lista-presenca`}>
+            <Button variant="outline">Lista de presença</Button>
+          </Link>
+          <Link href="/treinamentos">
+            <Button variant="outline">Voltar</Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Dados</CardTitle>
+          <CardTitle className="text-base">Dados do treinamento</CardTitle>
         </CardHeader>
         <CardContent className="grid sm:grid-cols-2 gap-3 text-sm">
           <p>
-            <span className="text-slate-500">Instrutor:</span> {t.instrutor || "—"}
+            <span className="text-slate-500">Instrutor / resp. técnico:</span> {t.instrutor || "—"}
           </p>
           <p>
             <span className="text-slate-500">Local:</span> {t.local || "—"}
@@ -48,12 +57,17 @@ export default async function TreinamentoDetalhePage({
             {t.cargaHoraria != null ? `${t.cargaHoraria}h` : "—"}
           </p>
           <p>
-            <span className="text-slate-500">Validade:</span>{" "}
+            <span className="text-slate-500">Validade / próximo periódico:</span>{" "}
             {t.validade ? formatDate(t.validade) : "—"}
           </p>
           {t.conteudo && (
             <p className="sm:col-span-2">
-              <span className="text-slate-500">Conteúdo:</span> {t.conteudo}
+              <span className="text-slate-500">Conteúdo programático:</span> {t.conteudo}
+            </p>
+          )}
+          {t.observacoes && (
+            <p className="sm:col-span-2">
+              <span className="text-slate-500">Observações:</span> {t.observacoes}
             </p>
           )}
         </CardContent>
@@ -93,6 +107,11 @@ export default async function TreinamentoDetalhePage({
           )}
         </CardContent>
       </Card>
+
+      <p className="text-xs text-slate-500 print:hidden">
+        Certificado alinhado ao conteúdo mínimo da NR-1 (item 1.7.1.1): trabalhador, conteúdo,
+        carga horária, data, local e instrutor/responsável técnico.
+      </p>
     </div>
   );
 }
