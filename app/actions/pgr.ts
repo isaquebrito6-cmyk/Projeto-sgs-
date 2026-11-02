@@ -74,7 +74,17 @@ export async function getPGR(id: string) {
   const pgr = await prisma.pGR.findUnique({
     where: { id },
     include: {
-      empresa: true,
+      empresa: {
+        include: {
+          setores: {
+            orderBy: { nome: "asc" },
+            include: {
+              funcoes: { orderBy: { nome: "asc" }, select: { id: true, nome: true, setorId: true } },
+              _count: { select: { colaboradores: true } },
+            },
+          },
+        },
+      },
       inventarioItens: { include: { risco: true }, orderBy: { createdAt: "asc" } },
       planoAcaoItens: { orderBy: { createdAt: "asc" } },
       pcmso: true,
@@ -86,9 +96,75 @@ export async function getPGR(id: string) {
   return pgr;
 }
 
+/** Dados da empresa + setores/funções para preencher formulários do PGR */
+export async function getEmpresaEstruturaParaPGR(empresaId: string) {
+  const user = await requireUser();
+  assertEmpresaAccess(user, empresaId);
+
+  return prisma.empresa.findUnique({
+    where: { id: empresaId },
+    select: {
+      id: true,
+      razaoSocial: true,
+      nomeFantasia: true,
+      cnae: true,
+      grauRisco: true,
+      numeroFuncionarios: true,
+      cidade: true,
+      uf: true,
+      setores: {
+        orderBy: { nome: "asc" },
+        include: {
+          funcoes: { orderBy: { nome: "asc" }, select: { id: true, nome: true } },
+          _count: { select: { colaboradores: true } },
+        },
+      },
+    },
+  });
+}
+
 export async function createPGR(data: PGRFormData) {
   const user = await requireUser();
   assertEmpresaAccess(user, data.empresaId);
+
+  // Puxa dados da empresa para caracterização se o usuário não preencheu
+  let caracterizacao = data.caracterizacaoProcessos?.trim() || "";
+  if (!caracterizacao) {
+    const emp = await prisma.empresa.findUnique({
+      where: { id: data.empresaId },
+      include: {
+        setores: { include: { funcoes: true, _count: { select: { colaboradores: true } } } },
+      },
+    });
+    if (emp) {
+      const linhas = [
+        `Empresa: ${emp.razaoSocial}${emp.nomeFantasia ? ` (${emp.nomeFantasia})` : ""}.`,
+        emp.cnae ? `CNAE: ${emp.cnae}.` : null,
+        emp.grauRisco != null ? `Grau de risco (NR-4): ${emp.grauRisco}.` : null,
+        emp.numeroFuncionarios != null
+          ? `Nº de trabalhadores informado: ${emp.numeroFuncionarios}.`
+          : null,
+        emp.cidade || emp.uf
+          ? `Localização: ${[emp.cidade, emp.uf].filter(Boolean).join(" / ")}.`
+          : null,
+      ].filter(Boolean);
+
+      if (emp.setores.length) {
+        linhas.push("Setores e funções cadastrados:");
+        for (const s of emp.setores) {
+          const funcoes = s.funcoes.map((f) => f.nome).join(", ") || "sem funções";
+          linhas.push(
+            `- ${s.nome} (${s._count.colaboradores} colaborador(es)): ${funcoes}`
+          );
+        }
+      }
+      caracterizacao = linhas.join("\n");
+    }
+  }
+
+  const metodologia =
+    data.metodologiaAvaliacao?.trim() ||
+    "Avaliação qualitativa de riscos com critérios de probabilidade (1–5) e severidade (1–5). Nível de risco = P × S (Baixo ≤4; Médio ≤9; Alto ≤16; Muito alto >16), alinhado ao GRO/PGR da NR-1.";
 
   const pgr = await prisma.pGR.create({
     data: {
@@ -97,8 +173,8 @@ export async function createPGR(data: PGRFormData) {
       versao: data.versao || "1.0",
       elaboradorNome: data.elaboradorNome?.trim() || null,
       elaboradorRegistro: data.elaboradorRegistro?.trim() || null,
-      caracterizacaoProcessos: data.caracterizacaoProcessos?.trim() || null,
-      metodologiaAvaliacao: data.metodologiaAvaliacao?.trim() || null,
+      caracterizacaoProcessos: caracterizacao || null,
+      metodologiaAvaliacao: metodologia,
       observacoes: data.observacoes?.trim() || null,
       status: "RASCUNHO",
     },
@@ -151,6 +227,24 @@ export async function addInventarioItem(pgrId: string, data: InventarioItemData)
     riscoId = risco.id;
   }
 
+  // Conta expostos pelo setor/função se não informado
+  let numeroExpostos = data.numeroExpostos;
+  if (numeroExpostos == null && (data.setorNome || data.funcaoNome)) {
+    const count = await prisma.colaborador.count({
+      where: {
+        empresaId: pgr.empresaId,
+        ativo: true,
+        ...(data.setorNome
+          ? { setor: { nome: data.setorNome } }
+          : {}),
+        ...(data.funcaoNome
+          ? { funcao: { nome: data.funcaoNome } }
+          : {}),
+      },
+    });
+    if (count > 0) numeroExpostos = count;
+  }
+
   const nivel = data.nivelRisco || calcNivel(data.probabilidade, data.severidade);
 
   await prisma.inventarioRiscoItem.create({
@@ -160,7 +254,7 @@ export async function addInventarioItem(pgrId: string, data: InventarioItemData)
       setorNome: data.setorNome || null,
       funcaoNome: data.funcaoNome || null,
       fonteGeradora: data.fonteGeradora || null,
-      numeroExpostos: data.numeroExpostos || null,
+      numeroExpostos: numeroExpostos ?? null,
       tipoExposicao: data.tipoExposicao || null,
       probabilidade: data.probabilidade || null,
       severidade: data.severidade || null,
@@ -229,4 +323,40 @@ export async function updatePlanoAcaoStatus(id: string, status: string, pgrId: s
   await prisma.planoAcaoItem.update({ where: { id }, data: { status } });
   revalidatePath(`/pgr/${pgrId}`);
   return { success: true };
+}
+
+/** Gera itens de plano de ação a partir dos riscos ALTO / MUITO_ALTO do inventário */
+export async function gerarPlanoAcaoDoInventario(pgrId: string) {
+  const user = await requireUser();
+  const pgr = await prisma.pGR.findUnique({
+    where: { id: pgrId },
+    include: { inventarioItens: { include: { risco: true } } },
+  });
+  if (!pgr) return { error: "PGR não encontrado." };
+  assertEmpresaAccess(user, pgr.empresaId);
+
+  const prioritarios = pgr.inventarioItens.filter(
+    (i) => i.nivelRisco === "ALTO" || i.nivelRisco === "MUITO_ALTO"
+  );
+
+  let criados = 0;
+  for (const item of prioritarios) {
+    const desc = `Controlar/reduzir risco "${item.risco.nome}"${
+      item.setorNome ? ` no setor ${item.setorNome}` : ""
+    }${item.funcaoNome ? ` (função ${item.funcaoNome})` : ""}. Revisar medidas existentes e implementar controles adicionais conforme hierarquia de controles (NR-1).`;
+
+    await prisma.planoAcaoItem.create({
+      data: {
+        pgrId,
+        descricaoAcao: desc,
+        riscoRelacionado: item.risco.nome,
+        prioridade: item.nivelRisco === "MUITO_ALTO" ? "Alta" : "Média",
+        status: "Pendente",
+      },
+    });
+    criados++;
+  }
+
+  revalidatePath(`/pgr/${pgrId}`);
+  return { success: true, criados };
 }

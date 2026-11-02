@@ -16,6 +16,8 @@ const statusColor: Record<string, string> = {
   VENCIDO: "bg-red-100 text-red-700",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function PGRDetailPage({
   params,
 }: {
@@ -24,6 +26,8 @@ export default async function PGRDetailPage({
   const { id } = await params;
   const pgr = await getPGR(id);
   if (!pgr) notFound();
+
+  const setores = pgr.empresa.setores || [];
 
   return (
     <div className="space-y-6">
@@ -37,21 +41,26 @@ export default async function PGRDetailPage({
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{pgr.titulo}</h1>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[pgr.status]}`}>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  statusColor[pgr.status]
+                }`}
+              >
                 {STATUS_DOCUMENTO_LABELS[pgr.status]}
               </span>
             </div>
             <p className="text-slate-500 mt-1">
-              {pgr.empresa.nomeFantasia || pgr.empresa.razaoSocial} · v{pgr.versao} · {formatDate(pgr.dataElaboracao)}
+              {pgr.empresa.nomeFantasia || pgr.empresa.razaoSocial} · v{pgr.versao} ·{" "}
+              {formatDate(pgr.dataElaboracao)}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {!pgr.pcmso && (
             <Link href={`/pcmso/novo?pgrId=${pgr.id}&empresaId=${pgr.empresaId}`}>
-              <Button variant="outline">
+              <Button variant="outline" disabled={pgr.inventarioItens.length === 0}>
                 <Stethoscope className="w-4 h-4" />
-                Gerar PCMSO
+                Gerar PCMSO a partir do inventário
               </Button>
             </Link>
           )}
@@ -66,7 +75,14 @@ export default async function PGRDetailPage({
         </div>
       </div>
 
-      {/* Dados gerais */}
+      {pgr.inventarioItens.length === 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Preencha o <strong>inventário de riscos</strong> (obrigatório na NR-1). Depois gere o{" "}
+          <strong>plano de ação</strong> e o <strong>PCMSO</strong> — os exames serão sugeridos com
+          base nos tipos de risco.
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -85,7 +101,7 @@ export default async function PGRDetailPage({
             </div>
             {pgr.caracterizacaoProcessos && (
               <div className="sm:col-span-2">
-                <dt className="text-slate-500">Caracterização dos processos</dt>
+                <dt className="text-slate-500">Caracterização dos processos (puxada da empresa)</dt>
                 <dd className="font-medium mt-0.5 whitespace-pre-wrap">{pgr.caracterizacaoProcessos}</dd>
               </div>
             )}
@@ -99,10 +115,8 @@ export default async function PGRDetailPage({
         </CardContent>
       </Card>
 
-      {/* Inventário de Riscos */}
-      <PGRInventario pgrId={id} itens={pgr.inventarioItens} />
+      <PGRInventario pgrId={id} itens={pgr.inventarioItens} setores={setores} />
 
-      {/* Plano de Ação */}
       <PGRPlanoAcao pgrId={id} itens={pgr.planoAcaoItens} />
     </div>
   );
