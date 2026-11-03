@@ -59,7 +59,7 @@ export function PppForm({
     setLoading(true);
     try {
       const res = await createPPP(form);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
         setLoading(false);
         return;
