@@ -29,23 +29,38 @@ declare module "@auth/core/jwt" {
     role?: Role;
     empresaId?: string | null;
     clinicaId?: string | null;
+    claimsCheckedAt?: number;
   }
 }
 
-/** Acesso de emergência / primeiro acesso — funciona mesmo se o banco falhar */
+const IS_PROD = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+
+/** Bootstrap só se explicitamente habilitado (ou em dev). Em produção prefira usuário no banco. */
+const BOOTSTRAP_ENABLED =
+  process.env.BOOTSTRAP_ADMIN === "1" ||
+  process.env.BOOTSTRAP_ADMIN === "true" ||
+  !IS_PROD;
+
 const BOOTSTRAP_ADMIN = {
-  id: "bootstrap-admin",
-  email: "isaquebrito6@gmail.com",
-  name: "Isaque Brito",
-  // senha padrão: Admin@SGS2026 — troque depois em Configurações
+  email: (process.env.BOOTSTRAP_EMAIL || "isaquebrito6@gmail.com").trim().toLowerCase(),
+  name: process.env.BOOTSTRAP_NAME || "Isaque Brito",
   password: process.env.BOOTSTRAP_PASSWORD || "Admin@SGS2026",
   role: "ADMIN" as Role,
 };
 
+const authSecret =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  (IS_PROD ? undefined : "sgs-dev-secret-apenas-local");
+
+if (IS_PROD && !authSecret) {
+  console.error("[auth] AUTH_SECRET não definido em produção.");
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "sgs-dev-secret-troque-em-producao-2026",
+  secret: authSecret,
   providers: [
     Credentials({
       name: "credentials",
@@ -59,15 +74,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(credentials.email).trim().toLowerCase();
         const password = String(credentials.password);
 
-        // 1) Bootstrap admin (sempre disponível)
+        // Rejeita senhas vazias / muito curtas
+        if (password.length < 6) return null;
+
+        // 1) Usuário no banco (preferencial)
+        try {
+          const user = await prisma.user.findUnique({ where: { email } });
+          if (user?.passwordHash) {
+            const valid = await bcrypt.compare(password, user.passwordHash);
+            if (!valid) return null;
+
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+              empresaId: user.empresaId,
+              clinicaId: user.clinicaId,
+            };
+          }
+        } catch (err) {
+          console.error("[auth] authorize db error:", err);
+        }
+
+        // 2) Bootstrap admin (somente se habilitado e senha bater)
         if (
+          BOOTSTRAP_ENABLED &&
           email === BOOTSTRAP_ADMIN.email &&
           password === BOOTSTRAP_ADMIN.password
         ) {
-          // Tenta sincronizar no banco (não bloqueia se falhar)
           try {
             const hash = await bcrypt.hash(password, 12);
-            await prisma.user.upsert({
+            const upserted = await prisma.user.upsert({
               where: { email: BOOTSTRAP_ADMIN.email },
               update: {
                 name: BOOTSTRAP_ADMIN.name,
@@ -81,40 +119,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 role: "ADMIN",
               },
             });
+            return {
+              id: upserted.id,
+              email: upserted.email,
+              name: upserted.name,
+              role: "ADMIN" as Role,
+              empresaId: null,
+              clinicaId: null,
+            };
           } catch {
-            // banco indisponível — login bootstrap continua
+            // Banco fora — permite sessão bootstrap só com id estável
+            return {
+              id: "bootstrap-admin",
+              email: BOOTSTRAP_ADMIN.email,
+              name: BOOTSTRAP_ADMIN.name,
+              role: BOOTSTRAP_ADMIN.role,
+              empresaId: null,
+              clinicaId: null,
+            };
           }
-
-          return {
-            id: BOOTSTRAP_ADMIN.id,
-            email: BOOTSTRAP_ADMIN.email,
-            name: BOOTSTRAP_ADMIN.name,
-            role: BOOTSTRAP_ADMIN.role,
-            empresaId: null,
-            clinicaId: null,
-          };
         }
 
-        // 2) Usuários no banco
-        try {
-          const user = await prisma.user.findUnique({ where: { email } });
-          if (!user?.passwordHash) return null;
-
-          const valid = await bcrypt.compare(password, user.passwordHash);
-          if (!valid) return null;
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            empresaId: user.empresaId,
-            clinicaId: user.clinicaId,
-          };
-        } catch (err) {
-          console.error("[auth] authorize error:", err);
-          return null;
-        }
+        return null;
       },
     }),
   ],

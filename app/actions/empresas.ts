@@ -73,8 +73,12 @@ export async function getEmpresa(id: string) {
 export async function createEmpresa(data: EmpresaFormData) {
   try {
     const user = await requireUser();
-    if (!canManageCatalog(user) && user.role === "EMPRESA") {
-      return { error: "Seu perfil só acessa a empresa vinculada. Contate o administrador." };
+    // Apenas ADMIN cria empresas no catálogo
+    if (!canManageCatalog(user)) {
+      return {
+        error:
+          "Apenas o administrador pode cadastrar novas empresas. Seu perfil acessa somente os dados vinculados.",
+      };
     }
 
     const cnpj = cleanCNPJ(data.cnpj);

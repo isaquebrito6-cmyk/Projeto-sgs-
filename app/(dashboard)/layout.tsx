@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   Shield,
   LayoutDashboard,
@@ -21,23 +21,23 @@ import {
   DoorOpen,
   IdCard,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { InstallAppButton } from "@/components/install-app-button";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/empresas", label: "Empresas", icon: Building2 },
-  { href: "/clinicas", label: "Clínicas", icon: Hospital },
-  { href: "/colaboradores", label: "Colaboradores", icon: Users },
-  { href: "/pgr", label: "PGR", icon: FileText },
-  { href: "/pcmso", label: "PCMSO", icon: Stethoscope },
-  { href: "/exames", label: "Exames / ASO", icon: ClipboardList },
-  { href: "/treinamentos", label: "Treinamentos", icon: GraduationCap },
-  { href: "/cat", label: "CAT", icon: AlertTriangle },
-  { href: "/pt", label: "PT", icon: ClipboardCheck },
-  { href: "/pet", label: "PET (NR-33)", icon: DoorOpen },
-  { href: "/ppp", label: "PPP", icon: IdCard },
+const ALL_NAV = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "EMPRESA", "CLINICA", "MEDICO"] },
+  { href: "/empresas", label: "Empresas", icon: Building2, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/clinicas", label: "Clínicas", icon: Hospital, roles: ["ADMIN", "CLINICA", "MEDICO", "EMPRESA"] },
+  { href: "/colaboradores", label: "Colaboradores", icon: Users, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/pgr", label: "PGR", icon: FileText, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/pcmso", label: "PCMSO", icon: Stethoscope, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/exames", label: "Exames / ASO", icon: ClipboardList, roles: ["ADMIN", "EMPRESA", "CLINICA", "MEDICO"] },
+  { href: "/treinamentos", label: "Treinamentos", icon: GraduationCap, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/cat", label: "CAT", icon: AlertTriangle, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/pt", label: "PT", icon: ClipboardCheck, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/pet", label: "PET (NR-33)", icon: DoorOpen, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/ppp", label: "PPP", icon: IdCard, roles: ["ADMIN", "EMPRESA"] },
 ];
 
 export default function DashboardLayout({
@@ -46,7 +46,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const role = (session?.user as { role?: string } | undefined)?.role || "EMPRESA";
+  const navItems = useMemo(
+    () => ALL_NAV.filter((item) => item.roles.includes(role)),
+    [role]
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -123,6 +130,10 @@ export default function DashboardLayout({
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t space-y-2 bg-white">
+          <p className="px-3 text-[10px] text-slate-400 truncate">
+            {session?.user?.email}
+            {role ? ` · ${role}` : ""}
+          </p>
           <InstallAppButton className="w-full" />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
