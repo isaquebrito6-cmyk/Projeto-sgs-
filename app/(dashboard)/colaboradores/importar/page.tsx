@@ -14,7 +14,9 @@ export default async function ImportarColaboradoresPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Importar colaboradores</h1>
           <p className="text-slate-500 mt-1">
-            Envie CSV ou cole a lista (Excel copiado). CPF inválido é ignorado com aviso.
+            Três formas: <strong>colar texto</strong> do Excel, <strong>arquivo CSV</strong> ou{" "}
+            <strong>foto / scanner</strong> (OCR). O sistema tenta colocar cada dado no campo certo —
+            revise a pré-visualização antes de importar.
           </p>
         </div>
         <Link href="/colaboradores">

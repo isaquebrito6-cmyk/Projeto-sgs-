@@ -11,6 +11,7 @@ import { listSetores } from "@/app/actions/setores";
 import { actionBuscarCPF, actionValidarCPF } from "@/app/actions/brasil";
 import { formatCPFMask } from "@/lib/brasil";
 import { FotoPicker } from "@/components/foto-picker";
+import { DocumentoOcrFill } from "@/components/documento-ocr-fill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2, Search } from "lucide-react";
@@ -96,6 +97,39 @@ export function ColaboradorForm({
       }
       if (field === "setorId") {
         next.funcaoId = "";
+      }
+      return next;
+    });
+  }
+
+  function aplicarOcr(dados: {
+    nome?: string;
+    cpf?: string;
+    email?: string;
+    telefone?: string;
+    setorNome?: string;
+    funcaoNome?: string;
+  }) {
+    setForm((prev) => {
+      const next = { ...prev };
+      if (dados.nome) next.nome = dados.nome;
+      if (dados.cpf) next.cpf = dados.cpf;
+      if (dados.email) next.email = dados.email;
+      if (dados.telefone) next.telefone = dados.telefone;
+
+      if (dados.setorNome) {
+        const setor = setores.find(
+          (s) => s.nome.toLowerCase().trim() === dados.setorNome!.toLowerCase().trim()
+        );
+        if (setor) {
+          next.setorId = setor.id;
+          if (dados.funcaoNome) {
+            const fn = setor.funcoes.find(
+              (f) => f.nome.toLowerCase().trim() === dados.funcaoNome!.toLowerCase().trim()
+            );
+            if (fn) next.funcaoId = fn.id;
+          }
+        }
       }
       return next;
     });
@@ -192,6 +226,8 @@ export function ColaboradorForm({
           )}
 
           <div className="grid sm:grid-cols-2 gap-4">
+            <DocumentoOcrFill onDados={aplicarOcr} />
+
             <FotoPicker
               value={form.fotoUrl}
               onChange={(url) => setForm((prev) => ({ ...prev, fotoUrl: url || "" }))}

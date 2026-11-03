@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Users, Upload } from "lucide-react";
+import { Plus, Users, Upload, Camera, ClipboardPaste, FileSpreadsheet } from "lucide-react";
 import { listColaboradores } from "@/app/actions/colaboradores";
 import { listEmpresas } from "@/app/actions/empresas";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default async function ColaboradoresPage({
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Colaboradores</h1>
           <p className="text-slate-500 mt-1">
-            Gerencie os colaboradores e vincule a setores e funções
+            Cadastro individual ou importação em massa (colar, CSV, foto/scanner)
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -42,6 +42,55 @@ export default async function ColaboradoresPage({
             </Button>
           </Link>
         </div>
+      </div>
+
+      {/* Atalhos de inclusão */}
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Link href="/colaboradores/importar" className="block">
+          <Card className="h-full hover:shadow-md transition border-sgs-200">
+            <CardContent className="p-4 flex gap-3 items-start">
+              <div className="w-10 h-10 rounded-lg bg-sgs-100 flex items-center justify-center shrink-0">
+                <ClipboardPaste className="w-5 h-5 text-sgs-700" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-slate-900">Colar lista</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Copie do Excel e cole. O sistema separa Nome, CPF, setor e função.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/colaboradores/importar" className="block">
+          <Card className="h-full hover:shadow-md transition border-sgs-200">
+            <CardContent className="p-4 flex gap-3 items-start">
+              <div className="w-10 h-10 rounded-lg bg-sgs-100 flex items-center justify-center shrink-0">
+                <FileSpreadsheet className="w-5 h-5 text-sgs-700" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-slate-900">Upload CSV</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Envie arquivo .csv ou .txt com cabeçalhos e importe de uma vez.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/colaboradores/importar" className="block">
+          <Card className="h-full hover:shadow-md transition border-sgs-200">
+            <CardContent className="p-4 flex gap-3 items-start">
+              <div className="w-10 h-10 rounded-lg bg-sgs-100 flex items-center justify-center shrink-0">
+                <Camera className="w-5 h-5 text-sgs-700" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-slate-900">Foto / scanner</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tire foto ou cole imagem da lista — OCR preenche os campos para revisão.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {empresas.length > 0 && (
@@ -80,7 +129,7 @@ export default async function ColaboradoresPage({
             </div>
             <h3 className="text-lg font-semibold text-slate-900">Nenhum colaborador cadastrado</h3>
             <p className="text-slate-500 mt-1 max-w-sm">
-              Cadastre um a um ou importe uma lista (CSV / colar do Excel).
+              Use importação (colar, CSV ou foto) ou cadastre um a um.
             </p>
             <div className="flex flex-wrap gap-2 mt-6 justify-center">
               <Link href="/colaboradores/importar">
