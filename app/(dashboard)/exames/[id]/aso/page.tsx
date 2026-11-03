@@ -2,6 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSolicitacao } from "@/app/actions/exames";
 import { PrintButton } from "@/components/print-button";
+import {
+  CHECKLIST_ANAMNESE,
+  CHECKLIST_PSICOSSOCIAL,
+  parseChecklists,
+  labelResposta,
+} from "@/lib/checklists-medicina";
 import { formatCPF, formatCNPJ, formatDate } from "@/lib/utils";
 
 export default async function ASOPrintPage({
@@ -14,14 +20,18 @@ export default async function ASOPrintPage({
   if (!sol?.aso) notFound();
 
   const aso = sol.aso;
+  const checks = parseChecklists(aso.checklistPsicossocial);
 
   return (
     <div className="min-h-screen bg-white text-black p-8 print:p-6">
-      <style>{`@media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}</style>
+      <style>{`@media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .break-page { break-before: page; } }`}</style>
 
       <div className="no-print mb-6 flex gap-3">
         <PrintButton />
-        <Link href={`/exames/${id}`} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-slate-50">
+        <Link
+          href={`/exames/${id}`}
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-slate-50"
+        >
           Voltar
         </Link>
       </div>
@@ -38,22 +48,32 @@ export default async function ASOPrintPage({
             <h2 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1 mb-2">
               a) Identificação da organização
             </h2>
-            <p><strong>Razão Social:</strong> {aso.razaoSocialEmpresa}</p>
-            <p><strong>CNPJ:</strong> {formatCNPJ(aso.cnpjEmpresa)}</p>
+            <p>
+              <strong>Razão Social:</strong> {aso.razaoSocialEmpresa}
+            </p>
+            <p>
+              <strong>CNPJ:</strong> {formatCNPJ(aso.cnpjEmpresa)}
+            </p>
           </section>
 
           <section>
             <h2 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1 mb-2">
               b) Identificação do empregado
             </h2>
-            <p><strong>Nome completo:</strong> {aso.nomeColaborador}</p>
-            <p><strong>CPF:</strong> {formatCPF(aso.cpfColaborador)}</p>
-            <p><strong>Função:</strong> {aso.funcaoColaborador || "—"}</p>
+            <p>
+              <strong>Nome completo:</strong> {aso.nomeColaborador}
+            </p>
+            <p>
+              <strong>CPF:</strong> {formatCPF(aso.cpfColaborador)}
+            </p>
+            <p>
+              <strong>Função:</strong> {aso.funcaoColaborador || "—"}
+            </p>
           </section>
 
           <section>
             <h2 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1 mb-2">
-              c) Perigos ou fatores de risco do PGR que necessitam de controle médico (PCMSO)
+              c) Perigos ou fatores de risco do PGR
             </h2>
             <p className="whitespace-pre-wrap">
               {aso.riscosOcupacionais ||
@@ -63,10 +83,14 @@ export default async function ASOPrintPage({
 
           <section>
             <h2 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1 mb-2">
-              d) Exames ocupacionais clínicos e complementares realizados
+              d) Exames ocupacionais realizados
             </h2>
-            <p><strong>Indicação:</strong> {aso.examesRealizados}</p>
-            <p><strong>Data de realização:</strong> {formatDate(aso.dataExame)}</p>
+            <p>
+              <strong>Indicação:</strong> {aso.examesRealizados}
+            </p>
+            <p>
+              <strong>Data:</strong> {formatDate(aso.dataExame)}
+            </p>
             <p className="text-xs text-slate-500 mt-1">Tipo de exame: {sol.tipoExame}</p>
           </section>
 
@@ -79,8 +103,7 @@ export default async function ASOPrintPage({
             </p>
             {aso.restricoes && (
               <p className="mt-1">
-                <strong>Aptidões específicas / restrições (NR-10, NR-33, NR-35 etc.):</strong>{" "}
-                {aso.restricoes}
+                <strong>Restrições / aptidões específicas:</strong> {aso.restricoes}
               </p>
             )}
           </section>
@@ -102,9 +125,16 @@ export default async function ASOPrintPage({
             </h2>
             <div className="flex justify-between items-end mt-4">
               <div>
-                <p><strong>Nome:</strong> {aso.medicoNome || "—"}</p>
-                <p><strong>CRM:</strong> {aso.medicoCrm ? `${aso.medicoCrm}/${aso.medicoCrmUf || ""}` : "—"}</p>
-                <p><strong>Data:</strong> {formatDate(aso.dataEmissao)}</p>
+                <p>
+                  <strong>Nome:</strong> {aso.medicoNome || "—"}
+                </p>
+                <p>
+                  <strong>CRM:</strong>{" "}
+                  {aso.medicoCrm ? `${aso.medicoCrm}/${aso.medicoCrmUf || ""}` : "—"}
+                </p>
+                <p>
+                  <strong>Data:</strong> {formatDate(aso.dataEmissao)}
+                </p>
               </div>
               <div className="text-center">
                 <div className="border-t border-slate-800 w-48 pt-1 text-xs text-slate-500">
@@ -125,11 +155,41 @@ export default async function ASOPrintPage({
         </div>
 
         <div className="border-t border-slate-300 px-6 py-3 text-xs text-slate-500 text-center">
-          Documento gerado pelo SGS — Sistema de Gestão em Segurança do Trabalho · Conforme NR-7/MTE
-          <br />
-          Este ASO deve ser disponibilizado ao empregado (NR-7, item 7.5.19).
+          Documento gerado pelo SGS · NR-7/MTE · Disponibilizar ao empregado (item 7.5.19)
         </div>
       </div>
+
+      {checks && (
+        <div className="max-w-3xl mx-auto mt-10 border border-slate-300 break-page">
+          <div className="bg-slate-100 px-5 py-3 border-b">
+            <h2 className="font-bold text-sm">Anexos — Anamnese e psicossocial (registro clínico)</h2>
+          </div>
+          <div className="p-5 grid md:grid-cols-2 gap-6 text-xs">
+            <div>
+              <p className="font-semibold mb-2">Anamnese</p>
+              <ul className="space-y-1">
+                {CHECKLIST_ANAMNESE.map((item) => (
+                  <li key={item.id}>
+                    <span className="text-slate-500">{item.pergunta}</span>{" "}
+                    <strong>{labelResposta(checks.anamnese[item.id])}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">Psicossocial / comportamental</p>
+              <ul className="space-y-1">
+                {CHECKLIST_PSICOSSOCIAL.map((item) => (
+                  <li key={item.id}>
+                    <span className="text-slate-500">{item.pergunta}</span>{" "}
+                    <strong>{labelResposta(checks.psicossocial[item.id])}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
