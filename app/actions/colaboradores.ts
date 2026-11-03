@@ -6,7 +6,7 @@ import { requireUser, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant"
 
 export type ColaboradorFormData = {
   nome: string;
-  c  cpf: string;
+  cpf: string;
   dataNascimento?: string;
   sexo?: string;
   email?: string;
