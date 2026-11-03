@@ -6,7 +6,7 @@ import { requireUser, assertEmpresaAccess, empresaIdFilter } from "@/lib/tenant"
 
 export type ColaboradorFormData = {
   nome: string;
-  cpf: string;
+  c  cpf: string;
   dataNascimento?: string;
   sexo?: string;
   email?: string;
@@ -22,7 +22,6 @@ function cleanCPF(cpf: string) {
   return cpf.replace(/\D/g, "");
 }
 
-/** Limita tamanho da data URL (~350 KB chars) para não estourar o banco */
 function sanitizeFoto(foto?: string | null) {
   if (!foto?.trim()) return null;
   const t = foto.trim();
@@ -61,6 +60,22 @@ export async function getColaborador(id: string) {
       funcao: true,
       asos: { orderBy: { dataEmissao: "desc" }, take: 10 },
       solicitacoesExame: { orderBy: { dataSolicitacao: "desc" }, take: 10 },
+      treinamentosParticipante: {
+        where: { presente: true },
+        include: {
+          treinamento: {
+            select: {
+              id: true,
+              titulo: true,
+              tipo: true,
+              catalogoId: true,
+              dataRealizacao: true,
+              validade: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
