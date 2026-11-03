@@ -9,10 +9,19 @@ import {
   Clock,
   Hospital,
   Stethoscope,
+  Cake,
+  Award,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma, testDatabase } from "@/lib/prisma";
+import { requireUser, empresaIdFilter, isAdmin } from "@/lib/tenant";
+import {
+  ANTECEDENCIA_DIAS,
+  calcularAvisosAniversario,
+  labelAntecedencia,
+} from "@/lib/aniversarios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +36,7 @@ export default async function DashboardPage() {
   let pcmso = 0;
   let dbOk = true;
   let dbMessage = "";
+  let avisos: ReturnType<typeof calcularAvisosAniversario> = [];
 
   const dbTest = await testDatabase();
   dbOk = dbTest.ok;
@@ -34,22 +44,64 @@ export default async function DashboardPage() {
 
   if (dbOk) {
     try {
-      const [e, c, p, a, cl, pc] = await Promise.all([
-        prisma.empresa.count({ where: { ativo: true } }),
-        prisma.colaborador.count({ where: { ativo: true } }),
-        prisma.pGR.count({ where: { status: { not: "VENCIDO" } } }),
-        prisma.solicitacaoExame.count({
-          where: { status: { in: ["PENDENTE", "ENVIADA_CLINICA", "EM_ATENDIMENTO"] } },
+      const user = await requireUser();
+      const scopedEmpresa = empresaIdFilter(user);
+
+      const empresaWhere = scopedEmpresa
+        ? { ativo: true as const, id: scopedEmpresa }
+        : { ativo: true as const };
+      const colabWhere = scopedEmpresa
+        ? { ativo: true as const, empresaId: scopedEmpresa }
+        : { ativo: true as const };
+
+      const [e, c, p, a, cl, pc, listaColab] = await Promise.all([
+        prisma.empresa.count({ where: empresaWhere }),
+        prisma.colaborador.count({ where: colabWhere }),
+        prisma.pGR.count({
+          where: {
+            status: { not: "VENCIDO" },
+            ...(scopedEmpresa ? { empresaId: scopedEmpresa } : {}),
+          },
         }),
-        prisma.clinica.count({ where: { ativo: true } }),
-        prisma.pCMSO.count({ where: { status: { not: "VENCIDO" } } }),
+        prisma.solicitacaoExame.count({
+          where: {
+            status: { in: ["PENDENTE", "ENVIADA_CLINICA", "EM_ATENDIMENTO"] },
+            ...(scopedEmpresa ? { empresaId: scopedEmpresa } : {}),
+          },
+        }),
+        isAdmin(user)
+          ? prisma.clinica.count({ where: { ativo: true } })
+          : prisma.clinica.count({ where: { ativo: true } }),
+        prisma.pCMSO.count({
+          where: {
+            status: { not: "VENCIDO" },
+            ...(scopedEmpresa ? { empresaId: scopedEmpresa } : {}),
+          },
+        }),
+        prisma.colaborador.findMany({
+          where: {
+            ativo: true,
+            ...(scopedEmpresa ? { empresaId: scopedEmpresa } : {}),
+            OR: [{ dataNascimento: { not: null } }, { dataAdmissao: { not: null } }],
+          },
+          select: {
+            id: true,
+            nome: true,
+            dataNascimento: true,
+            dataAdmissao: true,
+            empresa: { select: { nomeFantasia: true, razaoSocial: true } },
+          },
+          take: 2000,
+        }),
       ]);
+
       empresas = e;
       colaboradores = c;
       pgrs = p;
       asosPendentes = a;
       clinicas = cl;
       pcmso = pc;
+      avisos = calcularAvisosAniversario(listaColab, ANTECEDENCIA_DIAS);
     } catch {
       dbOk = false;
       dbMessage = "Falha ao ler tabelas. Rode Redeploy para criar o schema (prisma db push).";
@@ -57,11 +109,38 @@ export default async function DashboardPage() {
   }
 
   const stats = [
-    { label: "Empresas ativas", value: dbOk ? String(empresas) : "—", icon: Building2, color: "bg-blue-100 text-blue-700", href: "/empresas" },
-    { label: "Colaboradores", value: dbOk ? String(colaboradores) : "—", icon: Users, color: "bg-emerald-100 text-emerald-700", href: "/colaboradores" },
-    { label: "PGRs ativos", value: dbOk ? String(pgrs) : "—", icon: FileText, color: "bg-violet-100 text-violet-700", href: "/pgr" },
-    { label: "Exames pendentes", value: dbOk ? String(asosPendentes) : "—", icon: ClipboardList, color: "bg-amber-100 text-amber-700", href: "/exames" },
+    {
+      label: "Empresas ativas",
+      value: dbOk ? String(empresas) : "—",
+      icon: Building2,
+      color: "bg-blue-100 text-blue-700",
+      href: "/empresas",
+    },
+    {
+      label: "Colaboradores",
+      value: dbOk ? String(colaboradores) : "—",
+      icon: Users,
+      color: "bg-emerald-100 text-emerald-700",
+      href: "/colaboradores",
+    },
+    {
+      label: "PGRs ativos",
+      value: dbOk ? String(pgrs) : "—",
+      icon: FileText,
+      color: "bg-violet-100 text-violet-700",
+      href: "/pgr",
+    },
+    {
+      label: "Exames pendentes",
+      value: dbOk ? String(asosPendentes) : "—",
+      icon: ClipboardList,
+      color: "bg-amber-100 text-amber-700",
+      href: "/exames",
+    },
   ];
+
+  const hoje = avisos.filter((a) => a.dias === 0);
+  const proximos = avisos.filter((a) => a.dias > 0);
 
   return (
     <div className="space-y-8">
@@ -78,18 +157,111 @@ export default async function DashboardPage() {
             <strong>Banco de dados:</strong> não foi possível conectar.
           </p>
           <p className="text-xs text-amber-800/80 break-all">{dbMessage}</p>
-          <p className="text-xs mt-1">
-            Confira a variável <code className="bg-amber-100 px-1 rounded">DATABASE_URL</code> (começa com{" "}
-            <code className="bg-amber-100 px-1 rounded">postgresql://</code>), ambiente Production, e faça{" "}
-            <strong>Redeploy</strong>. No Neon, prefira connection <strong>Direct</strong> (sem -pooler) +{" "}
-            <code className="bg-amber-100 px-1 rounded">?sslmode=require</code>.
-          </p>
         </div>
       )}
 
-      {dbOk && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
-          Banco conectado — dados prontos para uso.
+      {/* Aniversários em destaque */}
+      {dbOk && avisos.length > 0 && (
+        <Card
+          className={cn(
+            "overflow-hidden border-2",
+            hoje.length > 0
+              ? "border-pink-400 bg-gradient-to-br from-pink-50 via-amber-50 to-white shadow-md"
+              : "border-violet-200 bg-gradient-to-br from-violet-50 to-white"
+          )}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-500 text-white shadow">
+                <Cake className="w-5 h-5" />
+              </span>
+              Aniversários
+              {hoje.length > 0 && (
+                <span className="ml-1 rounded-full bg-pink-500 px-2.5 py-0.5 text-xs font-bold text-white animate-pulse">
+                  {hoje.length} hoje!
+                </span>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Idade e tempo de empresa — avisos com até {ANTECEDENCIA_DIAS} dias de antecedência
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {avisos.map((a) => {
+              const isHoje = a.dias === 0;
+              const isIdade = a.tipo === "idade";
+              return (
+                <Link
+                  key={`${a.tipo}-${a.colaboradorId}-${a.dataLabel}`}
+                  href={`/colaboradores/${a.colaboradorId}`}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border px-3 py-3 transition hover:shadow-sm",
+                    isHoje
+                      ? "border-pink-300 bg-white ring-2 ring-pink-200"
+                      : a.dias <= 2
+                        ? "border-amber-200 bg-amber-50/80"
+                        : "border-slate-200 bg-white"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+                      isIdade
+                        ? isHoje
+                          ? "bg-pink-500 text-white"
+                          : "bg-pink-100 text-pink-700"
+                        : isHoje
+                          ? "bg-amber-500 text-white"
+                          : "bg-amber-100 text-amber-800"
+                    )}
+                  >
+                    {isIdade ? <Cake className="w-5 h-5" /> : <Award className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 truncate">{a.nome}</p>
+                    <p className="text-xs text-slate-500 truncate">{a.empresaNome}</p>
+                    <p className="text-sm mt-0.5">
+                      {isIdade ? (
+                        <>
+                          Completa <strong>{a.marca} anos</strong>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{a.marca} ano(s)</strong> de empresa
+                        </>
+                      )}
+                      <span className="text-slate-400"> · {a.dataLabel}</span>
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span
+                      className={cn(
+                        "inline-block rounded-full px-2.5 py-1 text-xs font-bold",
+                        isHoje
+                          ? "bg-pink-500 text-white"
+                          : a.dias === 1
+                            ? "bg-amber-400 text-amber-950"
+                            : "bg-slate-100 text-slate-700"
+                      )}
+                    >
+                      {labelAntecedencia(a.dias)}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+            {proximos.length === 0 && hoje.length > 0 && (
+              <p className="text-xs text-slate-500">Nenhum outro aniversário nos próximos {ANTECEDENCIA_DIAS} dias.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {dbOk && avisos.length === 0 && (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          Nenhum aniversário de idade ou de empresa nos próximos {ANTECEDENCIA_DIAS} dias. Cadastre{" "}
+          <strong>data de nascimento</strong> e <strong>admissão</strong> nos colaboradores para
+          ativar os avisos.
         </div>
       )}
 
@@ -174,57 +346,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-sgs-200 bg-sgs-50/50">
-        <CardHeader>
-          <CardTitle className="text-lg text-sgs-900">Fluxo recomendado</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="space-y-3 text-sm text-sgs-800">
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sgs-700 text-white text-xs font-bold">1</span>
-              <span>Cadastre a <strong>empresa</strong> (CNPJ, grau de risco NR-4, CNAE).</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sgs-700 text-white text-xs font-bold">2</span>
-              <span>Crie <strong>setores</strong>, <strong>funções</strong> e <strong>colaboradores</strong>.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sgs-700 text-white text-xs font-bold">3</span>
-              <span>Elabore o <strong>PGR</strong> (inventário + plano de ação).</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sgs-700 text-white text-xs font-bold">4</span>
-              <span>Gere o <strong>PCMSO</strong> e defina os exames.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sgs-700 text-white text-xs font-bold">5</span>
-              <span>Cadastre a <strong>clínica</strong>, solicite exames e emita o <strong>ASO</strong>.</span>
-            </li>
-          </ol>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Em breve no SGS</CardTitle>
-          <CardDescription>Próximos módulos planejados</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-            {["Treinamentos e DDS", "Carteirinha do colaborador", "Controle de EPI", "Ordem de serviço"].map(
-              (item) => (
-                <div
-                  key={item}
-                  className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-slate-600"
-                >
-                  {item}
-                </div>
-              )
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
