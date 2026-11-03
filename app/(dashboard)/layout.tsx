@@ -16,6 +16,10 @@ import {
   X,
   Hospital,
   GraduationCap,
+  AlertTriangle,
+  ClipboardCheck,
+  DoorOpen,
+  IdCard,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -30,6 +34,10 @@ const navItems = [
   { href: "/pcmso", label: "PCMSO", icon: Stethoscope },
   { href: "/exames", label: "Exames / ASO", icon: ClipboardList },
   { href: "/treinamentos", label: "Treinamentos", icon: GraduationCap },
+  { href: "/cat", label: "CAT", icon: AlertTriangle },
+  { href: "/pt", label: "PT", icon: ClipboardCheck },
+  { href: "/pet", label: "PET (NR-33)", icon: DoorOpen },
+  { href: "/ppp", label: "PPP", icon: IdCard },
 ];
 
 export default function DashboardLayout({
@@ -67,14 +75,14 @@ export default function DashboardLayout({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-14 items-center justify-between px-4 border-b lg:h-16">
+        <div className="flex h-14 items-center justify-between px-4 border-b lg:h-16 shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-sgs-900 flex items-center justify-center ring-2 ring-amber-400 shadow-md">
-              <Shield className="w-4.5 h-4.5 text-amber-300" />
+              <Shield className="w-4 h-4 text-amber-300" />
             </div>
             <div className="leading-tight">
               <span className="font-extrabold text-lg text-sgs-900 tracking-tight">SGS</span>
@@ -90,7 +98,7 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        <nav className="p-3 space-y-1">
+        <nav className="p-3 space-y-1 overflow-y-auto flex-1 pb-28">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
