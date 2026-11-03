@@ -60,7 +60,7 @@ export function CatForm({
     setLoading(true);
     try {
       const res = await createCAT(form);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
         setLoading(false);
         return;

@@ -54,7 +54,7 @@ export function PetForm({ empresas }: { empresas: EmpresaOption[] }) {
             : form.dataSaidaPrevista
           : undefined,
       });
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
         setLoading(false);
         return;

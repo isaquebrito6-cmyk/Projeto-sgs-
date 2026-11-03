@@ -65,7 +65,7 @@ export function PtForm({
           : undefined,
         colaboradorId: form.colaboradorId || undefined,
       });
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
         setLoading(false);
         return;
