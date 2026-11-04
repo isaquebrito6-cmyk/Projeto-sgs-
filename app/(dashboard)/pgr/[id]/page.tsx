@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Stethoscope, RefreshCw } from "lucide-react";
-import { getPGR, sincronizarCaracterizacaoPGR } from "@/app/actions/pgr";
+import { ArrowLeft, FileText, Stethoscope, Printer } from "lucide-react";
+import { getPGR } from "@/app/actions/pgr";
 import { labelGrauRisco } from "@/lib/pgr-nr1";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +59,12 @@ export default async function PGRDetailPage({
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Link href={`/pgr/${id}/documento`} target="_blank">
+            <Button className="bg-sgs-700 hover:bg-sgs-800">
+              <Printer className="w-4 h-4" />
+              Documento / Imprimir
+            </Button>
+          </Link>
           <SyncPGRButton pgrId={id} />
           {!pgr.pcmso && (
             <Link href={`/pcmso/novo?pgrId=${pgr.id}&empresaId=${pgr.empresaId}`}>
@@ -79,7 +85,6 @@ export default async function PGRDetailPage({
         </div>
       </div>
 
-      {/* Empresa / NR-4 / estrutura */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Empresa, grau de risco e estrutura (NR-1 / NR-4)</CardTitle>
@@ -97,6 +102,10 @@ export default async function PGRDetailPage({
           <p>
             <span className="text-slate-500">Grau de risco (NR-4):</span>{" "}
             {labelGrauRisco(emp.grauRisco)}
+          </p>
+          <p className="sm:col-span-2">
+            <span className="text-slate-500">Endereço:</span>{" "}
+            {[emp.endereco, emp.cidade, emp.uf, emp.cep].filter(Boolean).join(", ") || "—"}
           </p>
           <p className="sm:col-span-2">
             <span className="text-slate-500">Setores / funções / GHE:</span>{" "}
