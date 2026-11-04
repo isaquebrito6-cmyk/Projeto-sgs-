@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   DoorOpen,
   IdCard,
+  ListChecks,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ const ALL_NAV = [
   { href: "/empresas", label: "Empresas", icon: Building2, roles: ["ADMIN", "EMPRESA"] },
   { href: "/clinicas", label: "Clínicas", icon: Hospital, roles: ["ADMIN", "CLINICA", "MEDICO", "EMPRESA"] },
   { href: "/colaboradores", label: "Colaboradores", icon: Users, roles: ["ADMIN", "EMPRESA"] },
+  { href: "/inventario", label: "Inventário de Riscos", icon: ListChecks, roles: ["ADMIN", "EMPRESA"] },
   { href: "/pgr", label: "PGR", icon: FileText, roles: ["ADMIN", "EMPRESA"] },
   { href: "/pcmso", label: "PCMSO", icon: Stethoscope, roles: ["ADMIN", "EMPRESA"] },
   { href: "/exames", label: "Exames / ASO", icon: ClipboardList, roles: ["ADMIN", "EMPRESA", "CLINICA", "MEDICO"] },
