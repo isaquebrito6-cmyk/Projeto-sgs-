@@ -36,7 +36,7 @@ export function PppPeriodoForm({ pppId }: { pppId: string }) {
         ...form,
         dataFim: form.dataFim || undefined,
       });
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
         setLoading(false);
         return;
